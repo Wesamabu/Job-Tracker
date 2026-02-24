@@ -22,6 +22,15 @@ http://localhost:PORT
 Represents a single job or internship application.
 
 ```json
+phase1:
+{
+  "id": number,
+  "companyName": string,
+  "role": string,
+  "status": string,
+  "dateApplied": string
+}
+phase2:
 {
   "id": "string",
   "companyName": "Google",

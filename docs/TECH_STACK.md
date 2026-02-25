@@ -23,15 +23,21 @@ This document locks the tech stack so the team can work in parallel without deba
 
 ### Backend standards
 - REST endpoints must follow `docs/API_CONTRACT.md`.
+- Enable **CORS** so the React dev server can call the API.
 - API responses use **camelCase** (even if the DB uses snake_case internally).
 
 ---
 
 ## Database
-- DB: **PostgreSQL**
-- Local dev recommended via **Docker Compose**
-- Migrations: **Alembic**
-- ORM/Models: **SQLModel** (built on SQLAlchemy, great with FastAPI)
+- DB: **SQLite**
+- File-based DB stored in: `/backend/app.db` (or `/backend/data/app.db`)
+- ORM/Models: **SQLAlchemy**
+
+### Database standards
+- Use SQLAlchemy models as the source of truth for schema.
+-  map to **camelCase** in API.
+
+> Note: We’re using SQLite because it’s easiest for class + local dev. If we ever switch to Postgres later, SQLAlchemy makes that transition easier.
 
 ---
 
@@ -44,14 +50,13 @@ This document locks the tech stack so the team can work in parallel without deba
 - Runs on: `http://localhost:8000` (recommended)
 
 ### Database
-- Runs on: `localhost:5432` via Docker
+- Runs as a local file (SQLite), no server needed.
 
 ---
 
 ## Code Quality (recommended)
 - Frontend formatting: Prettier (optional)
 - Backend formatting: black + ruff (optional)
-
 ---
 
 ## Milestone 1 Scope Reminder

@@ -27,6 +27,11 @@ Location: `/frontend`
 * **Chakra UI** – Accessible and responsive component system
 * **CSS Modules** – Scoped component-level styling
 
+## Routing & State
+
+* **React Router DOM** – Declarative routing for multi-page SPA
+* **State Management (Optional)** – Zustand / Redux for global state
+
 ## Forms
 
 * **React Hook Form** – Simple and performant form handling
@@ -46,138 +51,92 @@ Location: `/frontend`
 
 ```text
 frontend/
-│
-├── public/                        # Static files (favicon, index.html, robots.txt)
+├── public/                                  # Static files (no bundling)
+│   ├── favicon.svg
+│   └── logo.svg
 │
 ├── src/
+│   ├── vite-env.d.ts                        # Vite environment types
 │   │
-│   ├── app/                        # App bootstrap and routing
-│   │   ├── App/
-│   │   │   ├── App.tsx
-│   │   │   ├── App.types.ts
-│   │   │   └── App.module.css
-│   │   ├── main.tsx
-│   │   └── routes.tsx
+│   ├── app/                                 # Application bootstrap
+│   │   ├── main.tsx                         # React entry point
+│   │   ├── App.tsx                          # Root component
+│   │   ├── App.module.css                   # App styles
+│   │   └── routes/
+│   │       └── index.tsx                    # Route configuration
 │   │
-│   ├── components/                 # Shared, reusable components
-│   │   ├── ui/
-│   │   │   └── Button/
-│   │   │       ├── Button.tsx
-│   │   │       ├── Button.types.ts
-│   │   │       └── Button.module.css
-│   │   └── layout/
-│   │       ├── Navbar/
-│   │       │   ├── Navbar.tsx
-│   │       │   ├── Navbar.types.ts
-│   │       │   └── Navbar.module.css
-│   │       └── Sidebar/
-│   │           ├── Sidebar.tsx
-│   │           ├── Sidebar.types.ts
-│   │           └── Sidebar.module.css
+│   ├── features/                            # Feature modules
+│   │   ├── analytics/                       # Analytics feature
+│   │   │   ├── types.ts
+│   │   │   ├── pages/
+│   │   │   │   ├── AnalyticsPage/
+│   │   │   │   │   └── AnalyticsPage.tsx
+│   │   │   │   └── InsightsPage/
+│   │   │   │       └── InsightsPage.tsx
+│   │   │   └── services/
+│   │   │       └── analytics.service.ts
+│   │   │
+│   │   ├── applications/                    # Job applications feature
+│   │   │   ├── types.ts
+│   │   │   ├── pages/
+│   │   │   │   └── ApplicationsPage/
+│   │   │   │       └── ApplicationsPage.tsx
+│   │   │   └── services/
+│   │   │       └── applications.service.ts
+│   │   │
+│   │   ├── dashboard/                       # Dashboard feature
+│   │   │   ├── types.ts
+│   │   │   ├── pages/
+│   │   │   │   └── DashboardPage/
+│   │   │   │       └── DashboardPage.tsx
+│   │   │   └── services/
+│   │   │       └── dashboard.service.ts
+│   │   │
+│   │   ├── insights/                        # Insights feature
+│   │   │   ├── types.ts
+│   │   │   ├── pages/
+│   │   │   │   └── InsightsPage/
+│   │   │   │       └── InsightsPage.tsx
+│   │   │   └── services/
+│   │   │       └── insights.service.ts
+│   │   │
+│   │   └── resume/                          # Resume feature
+│   │       └── pages/
+│   │           └── ResumesPage/
+│   │               └── ResumesPage.tsx
 │   │
-│   ├── contexts/                   # React Context providers
-│   │   ├── AuthContext.tsx
-│   │   └── ThemeContext.tsx
+│   ├── shared/                              # Shared utilities
+│   │   ├── components/
+│   │   │   └── PagePlaceholder/
+│   │   │       └── PagePlaceholder.tsx
+│   │   ├── hooks/
+│   │   │   └── useDebounce.ts               # Debounce hook
+│   │   ├── layout/
+│   │   │   ├── Footer/
+│   │   │   │   └── Footer.tsx               # Footer component
+│   │   │   └── Navbar/
+│   │   │       └── Navbar.tsx               # Navigation component
+│   │   ├── lib/
+│   │   │   └── apiClient.ts                 # Fetch API wrapper
+│   │   ├── types/
+│   │   │   └── index.ts                     # Global types
+│   │   └── utils/
+│   │       └── index.ts                     # Utility functions
 │   │
-│   ├── services/                   # API and business logic
-│   │   ├── apiService.ts
-│   │   └── jobService.ts
-│   │
-│   ├── types/                       # Global TypeScript types
-│   │   └── api.ts
-│   │
-│   ├── utils/                       # Helper functions
-│   │   └── formatDate.ts
-│   │
-│   ├── middleware.ts                # Middleware (fetch/axios interceptors)
-│   │
-│   ├── features/                    # Feature-based modules
-│   │   └── jobs/
-│   │       ├── components/
-│   │       │   ├── JobCard/
-│   │       │   │   ├── JobCard.tsx
-│   │       │   │   ├── JobCard.types.ts
-│   │       │   │   └── JobCard.module.css
-│   │       │   ├── JobForm/
-│   │       │   │   ├── JobForm.tsx
-│   │       │   │   ├── JobForm.types.ts
-│   │       │   │   └── JobForm.module.css
-│   │       │   └── JobList/
-│   │       │       ├── JobList.tsx
-│   │       │       ├── JobList.types.ts
-│   │       │       └── JobList.module.css
-│   │       ├── hooks/               # Feature-specific hooks
-│   │       │   ├── useJobs.ts
-│   │       │   └── useCreateJob.ts
-│   │       └── styles/              # Feature-specific styles
-│   │           └── jobs.module.css
-│   │
-│   ├── pages/                        # Page-level containers
-│   │   ├── DashboardPage/
-│   │   │   ├── DashboardPage.tsx
-│   │   │   ├── DashboardPage.types.ts
-│   │   │   └── DashboardPage.module.css
-│   │   ├── JobsPage/
-│   │   │   ├── JobsPage.tsx
-│   │   │   ├── JobsPage.types.ts
-│   │   │   └── JobsPage.module.css
-│   │   └── JobDetailsPage/
-│   │       ├── JobDetailsPage.tsx
-│   │       ├── JobDetailsPage.types.ts
-│   │       └── JobDetailsPage.module.css
-│   │
-│   ├── hooks/                        # Global reusable hooks
-│   │   └── useFetch.ts
-│   │
-│   ├── styles/                       # Minimal global styles
-│   │   └── global.css
-│   │
-│   └── assets/                        # Images, icons, static files
-│       ├── images/
-│       └── icons/
+│   └── styles/                              # Global styles
+│       ├── index.css                        # Global CSS
+│       └── theme.ts                         # Chakra UI theme
 │
-├── index.html
+├── index.html                               # Entry HTML file (Vite injects scripts here)
+├── .env.example
+├── README.md
+├── INITIAL_SETUP.md
+├── .eslintrc.cjs
+├── .prettierrc
+├── tsconfig.json
 ├── vite.config.ts
 └── package.json
 ```
-
----
-
-# ASCII Architecture Diagram
-
-```text
-             ┌───────────────┐
-             │ UI Primitives │ (Chakra + Base Components)
-             └───────┬───────┘
-                     │
-                     ▼
-             ┌───────────────────┐
-             │ Shared Components │
-             └───────┬───────────┘
-                     │
-                     ▼
-             ┌────────────────────┐
-             │ Feature Components │ (JobCard, JobForm, JobList)
-             └───────┬────────────┘
-                     │
-        ┌────────────┴────────────┐
-        ▼                         ▼
- ┌────────────────┐          ┌───────────────┐
- │ Page Containers│          │ Feature Hooks │ (useJobs, useCreateJob)
- └───────┬────────┘          └───────┬───────┘
-         │                           │
-         ▼                           ▼
- ┌───────────────┐          ┌───────────────┐
- │ Contexts      │          │ Services      │ (apiService, jobService)
- │ (Auth, Theme) │          │               │
- └───────────────┘          └───────────────┘
-         │                           │
-         └───────────┬───────────────┘
-                     ▼
-              Application State & API
-```
-
----
 
 # Styling Strategy
 
@@ -246,7 +205,7 @@ export const JobsChart: React.FC = () => (
 * Follow `docs/API_CONTRACT.md` for API consistency
 
 ---
-# Main Sections of the App
+# Core Features
 
 ## Dashboard
 
@@ -270,6 +229,15 @@ export const JobsChart: React.FC = () => (
 ---
 
 # Local Development
+
+## Tech Stack Installed
+
+- [x] React 18.2 + TypeScript 5.3
+- [x] Vite 5.0 (dev server & build tool)
+- [x] Chakra UI 2.8 (component library)
+- [x] React Router DOM 6.21 (routing)
+- [x] React Hook Form 7.49 (forms)
+- [x] Recharts 2.10 (charts)
 
 ```bash
 cd frontend

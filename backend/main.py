@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import FRONTEND_ORIGIN
 from app.database import Base, engine
-from app.routers import health
+from app.routers import health, dashboard
 
 # ---------------------------------------------------------------------------
 # Create all DB tables on startup (no-op if tables already exist)
@@ -36,7 +36,7 @@ app.add_middleware(
 # Routers
 # ---------------------------------------------------------------------------
 app.include_router(health.router)
-
+app.include_router(dashboard.router)
 # Future routers will be added here as features are implemented:
 # app.include_router(applications.router, prefix="/applications", tags=["applications"])
 # app.include_router(resumes.router,      prefix="/resumes",      tags=["resumes"])

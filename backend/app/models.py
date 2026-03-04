@@ -32,6 +32,6 @@ class Application(Base):
     id = Column(Integer, primary_key=True, index=True)
     company = Column(String)
     role = Column(String)
-    # This is the important one for your stats!
-    status = Column(String, default="applied") # e.g., "applied", "responded", "interview"
+    # Important for dashboard stats. we will update this column as the application progresses
+    status = Column(String, default="applied")
     created_at = Column(DateTime, default=datetime.utcnow)

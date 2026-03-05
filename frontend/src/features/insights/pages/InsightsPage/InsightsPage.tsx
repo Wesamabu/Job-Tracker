@@ -57,10 +57,10 @@ function InsightsPage() {
                         }}
                         flexWrap="nowrap"
                     >
-                        <Tab fontSize={{ base: 'sm', md: 'md' }} whiteSpace="nowrap" flex="1" px={{ base: 2, md: 4 }}>Overview</Tab>
-                        <Tab fontSize={{ base: 'sm', md: 'md' }} whiteSpace="nowrap" flex="1" px={{ base: 2, md: 4 }}>Timeline</Tab>
-                        <Tab fontSize={{ base: 'sm', md: 'md' }} whiteSpace="nowrap" flex="1" px={{ base: 2, md: 4 }}>Companies</Tab>
-                        <Tab fontSize={{ base: 'sm', md: 'md' }} whiteSpace="nowrap" flex="1" px={{ base: 2, md: 4 }}>Roles</Tab>
+                        <Tab fontSize={{ base: 'sm', md: 'md' }} whiteSpace="nowrap" flex="1" px={{ base: 2, md: 4 }}>Career Insights</Tab>
+                        <Tab fontSize={{ base: 'sm', md: 'md' }} whiteSpace="nowrap" flex="1" px={{ base: 2, md: 4 }}>Skill Themes</Tab>
+                        <Tab fontSize={{ base: 'sm', md: 'md' }} whiteSpace="nowrap" flex="1" px={{ base: 2, md: 4 }}>Resume Comparison</Tab>
+                        <Tab fontSize={{ base: 'sm', md: 'md' }} whiteSpace="nowrap" flex="1" px={{ base: 2, md: 4 }}>Role Fit</Tab>
                     </TabList>
 
                     <TabPanels>
@@ -127,7 +127,7 @@ function InsightsPage() {
                         <TabPanel px={{ base: 0, sm: 4 }}>
                             <Box p={{ base: 4, md: 6 }} bg="white" borderRadius="lg" boxShadow="md" mt={4}>
                                 <Heading as="h3" size={{ base: 'sm', md: 'md' }} mb={4}>
-                                    Application Timeline
+                                    Skill Themes
                                 </Heading>
                                 <Box
                                     height="400px"
@@ -147,7 +147,7 @@ function InsightsPage() {
                         <TabPanel px={{ base: 0, sm: 4 }}>
                             <Box p={{ base: 4, md: 6 }} bg="white" borderRadius="lg" boxShadow="md" mt={4}>
                                 <Heading as="h3" size={{ base: 'sm', md: 'md' }} mb={4}>
-                                    Top Companies Applied
+                                    Resume Comparison
                                 </Heading>
                                 <Box
                                     height="400px"
@@ -167,7 +167,7 @@ function InsightsPage() {
                         <TabPanel px={{ base: 0, sm: 4 }}>
                             <Box p={{ base: 4, md: 6 }} bg="white" borderRadius="lg" boxShadow="md" mt={4}>
                                 <Heading as="h3" size={{ base: 'sm', md: 'md' }} mb={4}>
-                                    Role Distribution
+                                    Role Fit
                                 </Heading>
                                 <Box
                                     height="400px"

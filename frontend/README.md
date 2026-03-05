@@ -213,9 +213,9 @@ export const JobsChart: React.FC = () => (
 
 ## Applications
 
+![Application-List](./docs/application-list.png)
 ![Application-Add-New](./docs/application-add-new.png)
 ![Application-Add-New-Status](./docs/application-add-new-select-status.png)
-![Application-List](./docs/application-list.png)
 ![Application-List-Status](./docs/application-list-status.png)
 ![Application-Edit](./docs/application-edit.png)
 

@@ -57,4 +57,3 @@ class Application(Base):
     # Relationships
     user = relationship("User", back_populates="applications")
     resume = relationship("Resume", back_populates="applications")
-#     ...

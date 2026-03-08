@@ -4,11 +4,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import FRONTEND_ORIGIN
 from app.database import Base, engine
 from app.routers import health
-
+from app.routers import applications
 # ---------------------------------------------------------------------------
 # Create all DB tables on startup (no-op if tables already exist)
 # ---------------------------------------------------------------------------
 import app.models  # noqa: F401 — ensures models are registered with Base
+
+
 Base.metadata.create_all(bind=engine)
 
 # ---------------------------------------------------------------------------
@@ -41,3 +43,5 @@ app.include_router(health.router)
 # app.include_router(applications.router, prefix="/applications", tags=["applications"])
 # app.include_router(resumes.router,      prefix="/resumes",      tags=["resumes"])
 # app.include_router(dashboard.router,    prefix="/dashboard",    tags=["dashboard"])
+
+app.include_router(applications.router)

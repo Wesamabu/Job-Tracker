@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from datetime import date
 from typing import Optional
+from enum import Enum
 
 class ApplicationBase(BaseModel):
     company: str
@@ -20,3 +21,11 @@ class ApplicationResponse(ApplicationBase):
 
     class Config:
         from_attributes = True
+
+
+
+class StatusEnum(str, Enum):
+    applied = "Applied"
+    interview = "Interview"
+    rejected = "Rejected"
+    offer = "Offer"

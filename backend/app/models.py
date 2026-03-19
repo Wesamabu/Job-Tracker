@@ -29,7 +29,7 @@ class Application(Base):
     id = Column(Integer, primary_key=True, index=True)
     company = Column(String, nullable=False)
     role = Column(String, nullable=False)
-    status = Column(String, default="Applied")
+    status = Column(String, default="Applied", nullable=False)
     date_applied = Column(Date)
     resume_used = Column(String)
     job_description = Column(Text)

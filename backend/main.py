@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import FRONTEND_ORIGIN
 from app.database import Base, engine
-from app.routers import health, applications, dashboard
+from app.routers import health, applications, dashboard, resumes
 
 # Create all tables
 import app.models  # noqa: F401
@@ -19,7 +19,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers - Both features are now active!
+# Include routers
 app.include_router(health.router)
 app.include_router(applications.router)
 app.include_router(dashboard.router)
+app.include_router(resumes.router)

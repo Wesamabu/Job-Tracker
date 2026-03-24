@@ -16,30 +16,92 @@ import {
 } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { CustomDropdown } from '../CustomDropdown';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { MdSave } from 'react-icons/md';
+import applicationsService from '@/features/applications/services/applications.service';
 
 interface NewApplicationModalProps {
     isOpen: boolean;
     onClose: () => void;
-    resumes: Array<{ id: number; name: string; format: string }>;
     onResumeModalOpen: () => void;
+    onApplicationAdded?: () => void;
 }
 
 export const NewApplicationModal = ({
     isOpen,
     onClose,
-    resumes,
     onResumeModalOpen,
+    onApplicationAdded,
 }: NewApplicationModalProps) => {
-    const [selectedStatus, setSelectedStatus] = useState<string | number>('');
-    const [selectedResume, setSelectedResume] = useState<string | number>('');
+    const [selectedStatus, setSelectedStatus] = useState<string | number>('applied');
+    const [selectedResumeId, setSelectedResumeId] = useState<string | number>('');
+    const [isSaving, setIsSaving] = useState(false);
+
+    const jobTitleRef = useRef<HTMLInputElement>(null);
+    const companyRef = useRef<HTMLInputElement>(null);
+    const locationRef = useRef<HTMLInputElement>(null);
+    const dateRef = useRef<HTMLInputElement>(null);
+    const notesRef = useRef<HTMLTextAreaElement>(null);
+    const descriptionRef = useRef<HTMLTextAreaElement>(null);
+
     const toast = useToast();
 
     const handleClose = () => {
-        setSelectedStatus('');
-        setSelectedResume('');
+        setSelectedStatus('applied');
+        setSelectedResumeId('');
         onClose();
+    };
+
+    const handleSave = async () => {
+        const jobTitle = jobTitleRef.current?.value?.trim();
+        const company = companyRef.current?.value?.trim();
+        const appliedDate = dateRef.current?.value;
+
+        if (!jobTitle || !company || !appliedDate) {
+            toast({
+                title: 'Missing required fields',
+                description: 'Please fill in Job Title, Company, and Date Applied.',
+                status: 'warning',
+                duration: 3000,
+                isClosable: true,
+            });
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            await applicationsService.create({
+                jobTitle,
+                company,
+                location: locationRef.current?.value?.trim() || undefined,
+                status: String(selectedStatus) || 'applied',
+                appliedDate,
+                description: descriptionRef.current?.value?.trim() || undefined,
+                notes: notesRef.current?.value?.trim() || undefined,
+                resumeId: selectedResumeId ? Number(selectedResumeId) : undefined,
+            } as any);
+
+            toast({
+                title: 'Application added.',
+                description: 'Your job application has been saved.',
+                status: 'success',
+                duration: 3000,
+                isClosable: true,
+            });
+
+            onApplicationAdded?.();
+            handleClose();
+        } catch {
+            toast({
+                title: 'Failed to save application',
+                description: 'Something went wrong. Please try again.',
+                status: 'error',
+                duration: 4000,
+                isClosable: true,
+            });
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
@@ -52,22 +114,22 @@ export const NewApplicationModal = ({
                     <VStack spacing={4}>
                         <FormControl isRequired>
                             <FormLabel>Job Title</FormLabel>
-                            <Input placeholder="e.g. Senior Software Engineer" />
+                            <Input ref={jobTitleRef} placeholder="e.g. Senior Software Engineer" />
                         </FormControl>
 
                         <FormControl isRequired>
                             <FormLabel>Company</FormLabel>
-                            <Input placeholder="e.g. Google" />
+                            <Input ref={companyRef} placeholder="e.g. Google" />
                         </FormControl>
 
                         <FormControl>
                             <FormLabel>Location</FormLabel>
-                            <Input placeholder="e.g. San Francisco, CA" />
+                            <Input ref={locationRef} placeholder="e.g. San Francisco, CA" />
                         </FormControl>
 
                         <FormControl isRequired>
                             <FormLabel>Date Applied</FormLabel>
-                            <Input type="date" />
+                            <Input ref={dateRef} type="date" />
                         </FormControl>
 
                         <FormControl isRequired>
@@ -77,29 +139,24 @@ export const NewApplicationModal = ({
                                 options={[
                                     { id: 'applied', label: 'Applied', value: 'applied' },
                                     { id: 'screening', label: 'Screening', value: 'screening' },
-                                    { id: 'interview', label: 'Interview', value: 'interview' },
-                                    { id: 'offer', label: 'Offer', value: 'offer' },
+                                    { id: 'interviewing', label: 'Interviewing', value: 'interviewing' },
+                                    { id: 'offered', label: 'Offered', value: 'offered' },
                                     { id: 'rejected', label: 'Rejected', value: 'rejected' },
                                     { id: 'accepted', label: 'Accepted', value: 'accepted' },
-                                    { id: 'declined', label: 'Declined', value: 'declined' }
+                                    { id: 'declined', label: 'Declined', value: 'declined' },
                                 ]}
                                 value={selectedStatus}
                                 onChange={setSelectedStatus}
                             />
                         </FormControl>
 
-                        <FormControl isRequired w="full">
-                            <FormLabel>Resume Used</FormLabel>
+                        <FormControl w="full">
+                            <FormLabel>Resume Used (optional)</FormLabel>
                             <CustomDropdown
-                                placeholder="Select a resume"
-                                options={resumes.map((resume) => ({
-                                    id: resume.id,
-                                    label: resume.name,
-                                    value: resume.id,
-                                    secondaryText: resume.format,
-                                }))}
-                                value={selectedResume}
-                                onChange={setSelectedResume}
+                                placeholder="Select a resume (optional)"
+                                options={[]}
+                                value={selectedResumeId}
+                                onChange={setSelectedResumeId}
                                 action={{
                                     label: 'Upload New Resume',
                                     icon: <AddIcon mr={2} />,
@@ -112,29 +169,13 @@ export const NewApplicationModal = ({
                         </FormControl>
 
                         <FormControl>
-                            <FormLabel>Job URL</FormLabel>
-                            <Input type="url" placeholder="https://..." />
-                        </FormControl>
-
-                        <FormControl>
                             <FormLabel>Job Description</FormLabel>
-                            <Textarea
-                                placeholder="Paste the job description here..."
-                                rows={4}
-                            />
-                        </FormControl>
-
-                        <FormControl>
-                            <FormLabel>Salary Range</FormLabel>
-                            <Input placeholder="e.g. $120k - $150k" />
+                            <Textarea ref={descriptionRef} placeholder="Paste the job description here..." rows={4} />
                         </FormControl>
 
                         <FormControl>
                             <FormLabel>Notes</FormLabel>
-                            <Textarea
-                                placeholder="Add any relevant notes about this application..."
-                                rows={3}
-                            />
+                            <Textarea ref={notesRef} placeholder="Add any relevant notes..." rows={3} />
                         </FormControl>
                     </VStack>
                 </ModalBody>
@@ -144,20 +185,12 @@ export const NewApplicationModal = ({
                         leftIcon={<MdSave size="1.25em" />}
                         colorScheme="brand"
                         mr={3}
-                        onClick={() => {
-                            toast({
-                                title: 'Application added.',
-                                description: "Your job application has been created successfully.",
-                                status: 'success',
-                                duration: 3000,
-                                isClosable: true,
-                            });
-                            handleClose();
-                        }}
+                        onClick={handleSave}
+                        isLoading={isSaving}
                     >
                         Save
                     </Button>
-                    <Button variant="outline" onClick={handleClose}>
+                    <Button variant="outline" onClick={handleClose} isDisabled={isSaving}>
                         Cancel
                     </Button>
                 </ModalFooter>

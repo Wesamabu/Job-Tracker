@@ -19,8 +19,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(health.router)
-app.include_router(applications.router)
-app.include_router(dashboard.router)
-app.include_router(resumes.router)
+# All routes are under /api prefix so the frontend can call http://localhost:8000/api/...
+app.include_router(health.router, prefix="/api")
+app.include_router(applications.router, prefix="/api")
+app.include_router(dashboard.router, prefix="/api")
+app.include_router(resumes.router, prefix="/api")

@@ -50,7 +50,7 @@ import { Pagination } from '../../../../shared/components/Pagination';
 import applicationsService from '../../services/applications.service';
 
 type ExtendedApplication = Application & {
-    resumeUsed: string;
+    resumeUsed?: string;
 };
 
 type SortKey = 'jobTitle' | 'company' | 'status' | 'appliedDate' | 'resumeUsed';
@@ -62,39 +62,6 @@ const applicationTableColumns: SortableColumn<SortKey>[] = [
     { key: 'status', label: 'status' },
     { key: 'appliedDate', label: 'date applied' },
     { key: 'resumeUsed', label: 'resume used' },
-];
-
-const initialApplications: ExtendedApplication[] = [
-    {
-        id: '1',
-        jobTitle: 'Frontend Engineer',
-        company: 'Google',
-        status: 'interviewing',
-        appliedDate: '2026-02-20',
-        resumeUsed: 'Software Engineer Resume',
-        location: 'Mountain View, CA',
-        notes: 'Completed recruiter screen.',
-    },
-    {
-        id: '2',
-        jobTitle: 'Full Stack Developer',
-        company: 'Stripe',
-        status: 'applied',
-        appliedDate: '2026-03-10',
-        resumeUsed: 'Full Stack Developer Resume',
-        location: 'Remote',
-        notes: 'Submitted through careers page.',
-    },
-    {
-        id: '3',
-        jobTitle: 'Software Engineer II',
-        company: 'Amazon',
-        status: 'rejected',
-        appliedDate: '2026-01-15',
-        resumeUsed: 'General Resume',
-        location: 'Seattle, WA',
-        notes: 'Rejected after online assessment.',
-    },
 ];
 
 const statusLabels: Record<ApplicationStatus, string> = {
@@ -114,7 +81,7 @@ const statusColors: Record<ApplicationStatus, string> = {
 };
 
 function ApplicationsPage() {
-    const [applications, setApplications] = useState<ExtendedApplication[]>(initialApplications);
+    const [applications, setApplications] = useState<ExtendedApplication[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterField, setFilterField] = useState<'status' | 'company' | 'resumeUsed'>('status');
@@ -124,107 +91,71 @@ function ApplicationsPage() {
     const [openAccordionIndex, setOpenAccordionIndex] = useState<number | number[] | undefined>(undefined);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
-
     const [selectedApplication, setSelectedApplication] = useState<ExtendedApplication | null>(null);
 
     const toast = useToast();
 
-    // Sample resumes data - TODO: Replace with actual data from API
-    const resumes = [
-        { id: 1, name: 'Software Engineer Resume', format: 'PDF' },
-        { id: 2, name: 'Full Stack Developer Resume', format: 'DOCX' },
-        { id: 3, name: 'General Resume', format: 'PDF' },
-    ];
+    const { isOpen: isViewOpen, onOpen: onViewOpen, onClose: onViewClose } = useDisclosure();
+    const { isOpen: isAddOpen, onOpen: onAddOpen, onClose: onAddClose } = useDisclosure();
+    const { isOpen: isResumeModalOpen, onOpen: onResumeModalOpen, onClose: onResumeModalClose } = useDisclosure();
 
-    const {
-        isOpen: isViewOpen,
-        onOpen: onViewOpen,
-        onClose: onViewClose,
-    } = useDisclosure();
-    const {
-        isOpen: isAddOpen,
-        onOpen: onAddOpen,
-        onClose: onAddClose,
-    } = useDisclosure();
-    const {
-        isOpen: isResumeModalOpen,
-        onOpen: onResumeModalOpen,
-        onClose: onResumeModalClose,
-    } = useDisclosure();
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setIsLoading(false);
-        }, 1500);
-        return () => clearTimeout(timer);
-    }, []);
-
-    const handleStatusChange = (applicationId: string, newStatus: ApplicationStatus) => {
-        setApplications(prevApplications =>
-            prevApplications.map(app =>
-                app.id === applicationId ? { ...app, status: newStatus } : app
-            )
-        );
+    const fetchApplications = () => {
+        setIsLoading(true);
+        applicationsService.getAll()
+            .then((data) => setApplications(data as ExtendedApplication[]))
+            .catch(() => {
+                toast({
+                    title: 'Failed to load applications',
+                    status: 'error',
+                    duration: 4000,
+                    isClosable: true,
+                });
+            })
+            .finally(() => setIsLoading(false));
     };
 
-    // const handleStatusChange = async (applicationId: string, newStatus: ApplicationStatus) => {
-    //     // Optimistically update the UI
-    //     const previousApplications = applications;
-    //     setApplications(prevApplications =>
-    //         prevApplications.map(app =>
-    //             app.id === applicationId ? { ...app, status: newStatus } : app
-    //         )
-    //     );
+    useEffect(() => {
+        fetchApplications();
+    }, []);
 
-    //     try {
-    //         // Send update to backend
-    //         await applicationsService.update(applicationId, { status: newStatus });
+    const handleStatusChange = async (applicationId: string, newStatus: ApplicationStatus) => {
+        const previousApplications = applications;
+        setApplications(prev => prev.map(app => app.id === applicationId ? { ...app, status: newStatus } : app));
 
-    //         toast({
-    //             title: 'Status updated',
-    //             description: 'Application status has been updated successfully.',
-    //             status: 'success',
-    //             duration: 3000,
-    //             isClosable: true,
-    //             position: 'top-right',
-    //         });
-    //     } catch (error) {
-    //         // Revert on error
-    //         setApplications(previousApplications);
-
-    //         toast({
-    //             title: 'Update failed',
-    //             description: 'Failed to update application status. Please try again.',
-    //             status: 'error',
-    //             duration: 5000,
-    //             isClosable: true,
-    //             position: 'top-right',
-    //         });
-
-    //         console.error('Failed to update application status:', error);
-    //     }
-    // };
+        try {
+            await applicationsService.update(applicationId, { status: newStatus });
+        } catch {
+            setApplications(previousApplications);
+            toast({
+                title: 'Update failed',
+                description: 'Could not update status. Please try again.',
+                status: 'error',
+                duration: 4000,
+                isClosable: true,
+            });
+        }
+    };
 
     const filteredApplications = useMemo(() => {
         const normalizedSearch = searchTerm.trim().toLowerCase();
-
         let filtered = applications.filter((application) => {
             const matchesSearch =
                 application.jobTitle.toLowerCase().includes(normalizedSearch) ||
                 application.company.toLowerCase().includes(normalizedSearch) ||
-                application.resumeUsed.toLowerCase().includes(normalizedSearch);
+                (application.resumeUsed ?? '').toLowerCase().includes(normalizedSearch);
 
             const matchesFilter =
-                filterValue === 'all' || application[filterField] === filterValue;
+                filterValue === 'all' ||
+                (filterField === 'status' && application.status === filterValue) ||
+                (filterField === 'company' && application.company === filterValue) ||
+                (filterField === 'resumeUsed' && (application.resumeUsed ?? '') === filterValue);
 
             return matchesSearch && matchesFilter;
         });
 
-        // Sort
         filtered.sort((a, b) => {
-            const aValue = a[sortKey];
-            const bValue = b[sortKey];
-
+            const aValue = (a[sortKey] ?? '') as string;
+            const bValue = (b[sortKey] ?? '') as string;
             if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
             if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
             return 0;
@@ -233,20 +164,16 @@ function ApplicationsPage() {
         return filtered;
     }, [applications, searchTerm, filterField, filterValue, sortKey, sortDirection]);
 
-    // Get unique companies and resumes
-    const uniqueCompanies = useMemo(() => {
-        return Array.from(new Set(
-            applications.map(app => app.company).filter(Boolean)
-        )).sort();
-    }, [applications]);
+    const uniqueCompanies = useMemo(() =>
+        Array.from(new Set(applications.map(app => app.company).filter(Boolean))).sort(),
+        [applications]
+    );
 
-    const uniqueResumes = useMemo(() => {
-        return Array.from(new Set(
-            applications.map(app => app.resumeUsed).filter(Boolean)
-        )).sort();
-    }, [applications]);
+    const uniqueResumes = useMemo(() =>
+        Array.from(new Set(applications.map(app => app.resumeUsed).filter(Boolean))).sort() as string[],
+        [applications]
+    );
 
-    // Pagination calculations
     const totalPages = Math.ceil(filteredApplications.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
@@ -258,15 +185,11 @@ function ApplicationsPage() {
         setFilterValue(value);
     };
 
-    const handleClearFilter = () => {
-        setFilterValue('all');
-    };
+    const handleClearFilter = () => setFilterValue('all');
 
     const getFilterButtonText = () => {
         if (filterValue === 'all') return 'Filter';
-        if (filterField === 'status') {
-            return statusLabels[filterValue as ApplicationStatus];
-        }
+        if (filterField === 'status') return statusLabels[filterValue as ApplicationStatus];
         return filterValue;
     };
 
@@ -304,14 +227,12 @@ function ApplicationsPage() {
                 ) : (
                     <HStack justify="space-between" align="flex-start" flexWrap="wrap" gap={2}>
                         <Box>
-                            <Heading as="h2" size={{ base: 'md', md: 'lg' }} mb={0.5}>
-                                Applications
-                            </Heading>
+                            <Heading as="h2" size={{ base: 'md', md: 'lg' }} mb={0.5}>Applications</Heading>
                             <Text color="gray.600" fontSize={{ base: 'xs', md: 'sm' }}>
                                 Track and manage all your job applications.
                             </Text>
                         </Box>
-                        <Button leftIcon={<AddIcon />} colorScheme="brand" onClick={onAddOpen} size={"sm"}>
+                        <Button leftIcon={<AddIcon />} colorScheme="brand" onClick={onAddOpen} size="sm">
                             Add Application
                         </Button>
                     </HStack>
@@ -320,12 +241,10 @@ function ApplicationsPage() {
                 {/* Loading State */}
                 {isLoading ? (
                     <>
-                        {/* Search and Filter Skeleton */}
                         <HStack flexWrap="wrap" gap={2} justifyContent="flex-end">
                             <Skeleton h={10} w={{ base: '100%', md: '420px' }} borderRadius="lg" />
                             <Skeleton h={10} w="100px" borderRadius="md" />
                         </HStack>
-
                         <Box bg="white" borderRadius="lg" boxShadow="md" overflowX="auto" position="relative" minH="300px">
                             <Table variant="simple" size="sm">
                                 <Thead bg="gray.50">
@@ -349,49 +268,25 @@ function ApplicationsPage() {
                                     ))}
                                 </Tbody>
                             </Table>
-                            <Box
-                                position="absolute"
-                                top="50%"
-                                left="50%"
-                                transform="translate(-50%, -50%)"
-                                display="flex"
-                                alignItems="center"
-                                justifyContent="center"
-                            >
+                            <Box position="absolute" top="50%" left="50%" transform="translate(-50%, -50%)" display="flex" alignItems="center" justifyContent="center">
                                 <Spinner size="lg" color="brand.500" thickness="4px" />
                             </Box>
                         </Box>
-
-                        {/* Pagination Skeleton */}
-                        <HStack justify="space-between" align="center" pt={4} px={2}>
-                            <Skeleton h={8} w="150px" />
-                            <Skeleton h={6} w="200px" />
-                            <Skeleton h={8} w="200px" />
-                        </HStack>
                     </>
                 ) : applications.length === 0 ? (
-                    /* Empty State */
                     <VStack spacing={6} py={16} align="center" justify="center" bg="gray.50" borderRadius="lg" minH="300px">
                         <Box fontSize="48px">📋</Box>
                         <VStack spacing={2} align="center">
-                            <Heading as="h3" size="md" color="gray.700">
-                                No applications yet
-                            </Heading>
+                            <Heading as="h3" size="md" color="gray.700">No applications yet</Heading>
                             <Text color="gray.600" maxW="sm" textAlign="center">
-                                Start tracking your job applications by adding your first one. Click the button above to get started!
+                                Start tracking your job applications by adding your first one.
                             </Text>
                         </VStack>
-                        <Button
-                            leftIcon={<AddIcon />}
-                            colorScheme="brand"
-                            onClick={onAddOpen}
-                            mt={4}
-                        >
+                        <Button leftIcon={<AddIcon />} colorScheme="brand" onClick={onAddOpen} mt={4}>
                             Add Your First Application
                         </Button>
                     </VStack>
                 ) : (
-                    /* Normal State - With filters and table */
                     <>
                         <VStack align="stretch" spacing={2}>
                             <HStack flexWrap="wrap" gap={2} justifyContent="flex-end">
@@ -433,9 +328,7 @@ function ApplicationsPage() {
                                         <Accordion index={openAccordionIndex} onChange={setOpenAccordionIndex} allowToggle>
                                             <AccordionItem border="none">
                                                 <AccordionButton _hover={{ bg: 'gray.50' }}>
-                                                    <Box flex="1" textAlign="left" fontWeight="semibold" fontSize="sm">
-                                                        Status
-                                                    </Box>
+                                                    <Box flex="1" textAlign="left" fontWeight="semibold" fontSize="sm">Status</Box>
                                                     <AccordionIcon />
                                                 </AccordionButton>
                                                 <AccordionPanel p={0} maxH="200px" overflowY="auto" bg="gray.50">
@@ -460,9 +353,7 @@ function ApplicationsPage() {
                                             {uniqueCompanies.length > 0 && (
                                                 <AccordionItem border="none">
                                                     <AccordionButton _hover={{ bg: 'gray.50' }}>
-                                                        <Box flex="1" textAlign="left" fontWeight="semibold" fontSize="sm">
-                                                            Company
-                                                        </Box>
+                                                        <Box flex="1" textAlign="left" fontWeight="semibold" fontSize="sm">Company</Box>
                                                         <AccordionIcon />
                                                     </AccordionButton>
                                                     <AccordionPanel p={0} maxH="200px" overflowY="auto" bg="gray.50">
@@ -486,9 +377,7 @@ function ApplicationsPage() {
                                             {uniqueResumes.length > 0 && (
                                                 <AccordionItem border="none">
                                                     <AccordionButton _hover={{ bg: 'gray.50' }}>
-                                                        <Box flex="1" textAlign="left" fontWeight="semibold" fontSize="sm">
-                                                            Resume
-                                                        </Box>
+                                                        <Box flex="1" textAlign="left" fontWeight="semibold" fontSize="sm">Resume</Box>
                                                         <AccordionIcon />
                                                     </AccordionButton>
                                                     <AccordionPanel p={0} maxH="200px" overflowY="auto" bg="gray.50">
@@ -530,23 +419,20 @@ function ApplicationsPage() {
                                                 onChange={(e) => handleStatusChange(application.id, e.target.value as ApplicationStatus)}
                                                 size="sm"
                                                 minW={{ base: '90px', md: 'auto' }}
-                                                borderColor={`${statusColors[application.status]}.300`}
-                                                color={`${statusColors[application.status]}.700`}
+                                                borderColor={`${statusColors[application.status] ?? 'gray'}.300`}
+                                                color={`${statusColors[application.status] ?? 'gray'}.700`}
                                                 fontWeight="semibold"
                                                 bg="white"
-                                                _hover={{ borderColor: `${statusColors[application.status]}.400` }}
                                                 cursor="pointer"
                                             >
                                                 {Object.entries(statusLabels).map(([value, label]) => (
-                                                    <option key={value} value={value}>
-                                                        {label}
-                                                    </option>
+                                                    <option key={value} value={value}>{label}</option>
                                                 ))}
                                             </Select>
                                         </Td>
-                                        <Td fontSize="14px">{application.appliedDate}</Td>
+                                        <Td fontSize="14px">{application.appliedDate ?? '—'}</Td>
                                         <Td fontSize="14px" position="relative" pe="0px">
-                                            {application.resumeUsed}
+                                            {application.resumeUsed ?? '—'}
                                             <Menu>
                                                 <MenuButton as={Button} bg="gray.200" _hover={{ bg: 'gray.300' }} _active={{ bg: 'gray.400' }} w="8px" h="full" minW="unset" p={0} position="absolute" top="0" right="0" borderRadius="0" display="flex" alignItems="center" justifyContent="center" overflow="hidden">
                                                     <Text fontSize="md" fontWeight="bold" letterSpacing="0.1em" whiteSpace="nowrap">⋮</Text>
@@ -578,19 +464,13 @@ function ApplicationsPage() {
                     </>
                 )}
 
-                {/* Shared Application Modal */}
                 <NewApplicationModal
                     isOpen={isAddOpen}
                     onClose={onAddClose}
-                    resumes={resumes}
                     onResumeModalOpen={onResumeModalOpen}
+                    onApplicationAdded={fetchApplications}
                 />
-
-                {/* Shared Resume Modal */}
-                <NewResumeModal
-                    isOpen={isResumeModalOpen}
-                    onClose={onResumeModalClose}
-                />
+                <NewResumeModal isOpen={isResumeModalOpen} onClose={onResumeModalClose} />
 
                 <Modal isOpen={isViewOpen} onClose={handleCloseDetails} size={{ base: 'full', md: 'xl' }}>
                     <ModalOverlay />
@@ -602,53 +482,35 @@ function ApplicationsPage() {
                                 <VStack spacing={4}>
                                     <FormControl>
                                         <FormLabel>Job Title</FormLabel>
-                                        <Input
-                                            value={selectedApplication.jobTitle}
-                                            isReadOnly
-                                        />
+                                        <Input value={selectedApplication.jobTitle} isReadOnly />
                                     </FormControl>
                                     <FormControl>
                                         <FormLabel>Company</FormLabel>
-                                        <Input
-                                            value={selectedApplication.company}
-                                            isReadOnly
-                                        />
+                                        <Input value={selectedApplication.company} isReadOnly />
                                     </FormControl>
                                     <FormControl>
                                         <FormLabel>Status</FormLabel>
-                                        <Select
-                                            value={selectedApplication.status}
-                                            isDisabled
-                                        >
-                                            <option value="applied">Applied</option>
-                                            <option value="interviewing">Interviewing</option>
-                                            <option value="offered">Offered</option>
-                                            <option value="rejected">Rejected</option>
-                                            <option value="accepted">Accepted</option>
-                                        </Select>
+                                        <Input value={statusLabels[selectedApplication.status] ?? selectedApplication.status} isReadOnly />
                                     </FormControl>
                                     <FormControl>
                                         <FormLabel>Date Applied</FormLabel>
-                                        <Input
-                                            type="date"
-                                            value={selectedApplication.appliedDate}
-                                            isReadOnly
-                                        />
+                                        <Input value={selectedApplication.appliedDate ?? ''} isReadOnly />
                                     </FormControl>
                                     <FormControl>
                                         <FormLabel>Resume Used</FormLabel>
-                                        <Input
-                                            value={selectedApplication.resumeUsed}
-                                            isReadOnly
-                                        />
+                                        <Input value={selectedApplication.resumeUsed ?? '—'} isReadOnly />
                                     </FormControl>
+                                    {selectedApplication.notes && (
+                                        <FormControl>
+                                            <FormLabel>Notes</FormLabel>
+                                            <Input value={selectedApplication.notes} isReadOnly />
+                                        </FormControl>
+                                    )}
                                 </VStack>
                             )}
                         </ModalBody>
                         <ModalFooter>
-                            <Button variant="ghost" onClick={handleCloseDetails}>
-                                Close
-                            </Button>
+                            <Button variant="ghost" onClick={handleCloseDetails}>Close</Button>
                         </ModalFooter>
                     </ModalContent>
                 </Modal>

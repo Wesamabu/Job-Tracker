@@ -1,157 +1,142 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from typing import Optional
 
 from app.database import get_db
 from app import models, schemas
-from app.schemas import StatusEnum
-from fastapi import UploadFile, File, Form
-from datetime import date
-import os
-import uuid
-from typing import List
-from fastapi import Query
-from sqlalchemy import or_
 
-
+# Hardcoded user_id=1 until authentication is implemented
+USER_ID = 1
 
 router = APIRouter(prefix="/applications", tags=["Applications"])
 
-@router.get("/all", response_model=list[schemas.ApplicationResponse])
+
+def _to_response(app: models.Application) -> dict:
+    """Map an Application ORM object to the camelCase shape the frontend expects."""
+    resume_name = app.resume.name if app.resume else None
+    return {
+        "id": app.id,
+        "jobTitle": app.role,
+        "company": app.company,
+        "location": app.location,
+        "status": app.status,
+        "appliedDate": app.date_applied,
+        "description": app.job_description,
+        "notes": app.notes,
+        "resumeUsed": resume_name,
+    }
+
+
+# ── GET /applications ────────────────────────────────────────────────────────
+
+@router.get("/", response_model=list[schemas.ApplicationResponse])
 def get_all_applications(db: Session = Depends(get_db)):
-    """
-    Get all applications without any filters
-    """
-    applications = db.query(models.Application).all()
-    return applications
+    """Return all applications for the current user."""
+    apps = db.query(models.Application).filter(
+        models.Application.user_id == USER_ID
+    ).order_by(models.Application.created_at.desc()).all()
+    return [_to_response(a) for a in apps]
 
 
+# ── GET /applications/{id} ───────────────────────────────────────────────────
 
-@router.get("/filter", response_model=list[schemas.ApplicationResponse])
-def get_filtered_applications(
-    status: Optional[StatusEnum] = Query(
-        None, description="Filter by application status"
-    ),
-    start_date: Optional[date] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
-    db: Session = Depends(get_db)
-):
-    query = db.query(models.Application)
+@router.get("/{app_id}", response_model=schemas.ApplicationResponse)
+def get_application(app_id: int, db: Session = Depends(get_db)):
+    """Return a single application by ID."""
+    app = db.query(models.Application).filter(
+        models.Application.id == app_id,
+        models.Application.user_id == USER_ID,
+    ).first()
+    if not app:
+        raise HTTPException(status_code=404, detail="Application not found")
+    return _to_response(app)
 
-    if status:
-        query = query.filter(models.Application.status == status.value)
-    if start_date:
-        query = query.filter(models.Application.date_applied >= start_date)
-    if end_date:
-        query = query.filter(models.Application.date_applied <= end_date)
 
-    return query.all()
+# ── POST /applications ───────────────────────────────────────────────────────
 
-@router.get("/search", response_model=list[schemas.ApplicationResponse])
-def search_applications(
-    q: str = Query(..., description="Search text or numeric values"),
-    db: Session = Depends(get_db)
-):
-    """
-    Search applications by company, role, job_description, or id.
-    Text search is case-insensitive.
-    """
-    query = db.query(models.Application)
-
-    # Try to interpret q as number for searching numeric fields like id
-    try:
-        q_number = int(q)
-    except ValueError:
-        q_number = None
-
-    # Build the filter
-    filters = [
-        models.Application.company.ilike(f"%{q}%"),
-        models.Application.role.ilike(f"%{q}%"),
-        models.Application.job_description.ilike(f"%{q}%"),
-    ]
-    if q_number is not None:
-        filters.append(models.Application.id == q_number)
-
-    query = query.filter(or_(*filters))
-
-    return query.all()
-@router.post("/", response_model=schemas.ApplicationResponse)
-def create_application(
-    company: str = Form(...),
-    role: str = Form(...),
-    job_description: str = Form(None),
-    status: str = Form("Applied"),
-    date_applied: date = Form(...),
-    resume: UploadFile = File(None, description="Upload a new resume in PDF"),
-    selected_resume: str = Form(None, description="Or select an existing resume from dropdown"),
-    db: Session = Depends(get_db)
-):
-    """
-    Create a new application.
-    Either a new resume can be uploaded OR an existing resume selected.
-    """
-
-    # Validate that at least one resume option is provided
-    if not resume and not selected_resume:
-        raise HTTPException(status_code=400, detail="Please upload a resume or select an existing one")
-
-    # Handle new resume upload
-    if resume:
-        if resume.content_type != "application/pdf":
-            raise HTTPException(status_code=400, detail="Only PDF files are allowed")
-        os.makedirs("resumes", exist_ok=True)  # Ensure folder exists
-
-        # Generate unique filename
-        file_name = f"{uuid.uuid4()}.pdf"
-        file_path = f"resumes/{file_name}"
-
-        # Save file to disk
-        with open(file_path, "wb") as buffer:
-            buffer.write(resume.file.read())
-
-    else:
-        # Use selected existing resume
-        file_path = f"resumes/{selected_resume}"
-
-        # Validate that the file exists
-        if not os.path.exists(file_path):
-            raise HTTPException(status_code=404, detail="Selected resume not found on server")
-
-    # Create new application record
+@router.post("/", response_model=schemas.ApplicationResponse, status_code=201)
+def create_application(data: schemas.ApplicationCreate, db: Session = Depends(get_db)):
+    """Create a new application."""
     new_app = models.Application(
-        company=company,
-        role=role,
-        status=status,
-        job_description=job_description,
-        date_applied=date_applied,
-        resume_used=file_path
+        user_id=USER_ID,
+        company=data.company,
+        role=data.jobTitle,
+        location=data.location,
+        status=data.status,
+        date_applied=data.appliedDate,
+        job_description=data.description,
+        notes=data.notes,
+        resume_id=data.resumeId,
     )
-
     db.add(new_app)
     db.commit()
     db.refresh(new_app)
-
-    return new_app
-
-@router.get("/resumes/", response_model=List[str])
-def list_resumes(db: Session = Depends(get_db)):
-    resume_paths = db.query(models.Application.resume_used).all()
-    return [os.path.basename(r[0]) for r in resume_paths]
+    return _to_response(new_app)
 
 
+# ── PUT /applications/{id} ───────────────────────────────────────────────────
 
-# Update application status
-@router.patch("/{app_id}/status")
-def update_status(app_id: int, status: StatusEnum, db: Session = Depends(get_db)):
-    application = db.query(models.Application).filter(models.Application.id == app_id).first()
-
-    if not application:
+@router.put("/{app_id}", response_model=schemas.ApplicationResponse)
+def update_application(app_id: int, data: schemas.ApplicationUpdate, db: Session = Depends(get_db)):
+    """Update an existing application."""
+    app = db.query(models.Application).filter(
+        models.Application.id == app_id,
+        models.Application.user_id == USER_ID,
+    ).first()
+    if not app:
         raise HTTPException(status_code=404, detail="Application not found")
 
-    application.status = status.value
+    if data.jobTitle is not None:
+        app.role = data.jobTitle
+    if data.company is not None:
+        app.company = data.company
+    if data.location is not None:
+        app.location = data.location
+    if data.status is not None:
+        app.status = data.status
+    if data.appliedDate is not None:
+        app.date_applied = data.appliedDate
+    if data.description is not None:
+        app.job_description = data.description
+    if data.notes is not None:
+        app.notes = data.notes
+    if data.resumeId is not None:
+        app.resume_id = data.resumeId
+
     db.commit()
-    db.refresh(application)
+    db.refresh(app)
+    return _to_response(app)
 
-    return application
 
+# ── DELETE /applications/{id} ────────────────────────────────────────────────
+
+@router.delete("/{app_id}", status_code=204)
+def delete_application(app_id: int, db: Session = Depends(get_db)):
+    """Delete an application."""
+    app = db.query(models.Application).filter(
+        models.Application.id == app_id,
+        models.Application.user_id == USER_ID,
+    ).first()
+    if not app:
+        raise HTTPException(status_code=404, detail="Application not found")
+    db.delete(app)
+    db.commit()
+
+
+# ── GET /applications/search ─────────────────────────────────────────────────
+
+@router.get("/search/", response_model=list[schemas.ApplicationResponse])
+def search_applications(
+    q: str = Query(..., description="Search by company or role"),
+    db: Session = Depends(get_db),
+):
+    """Search applications by company name or job title."""
+    apps = db.query(models.Application).filter(
+        models.Application.user_id == USER_ID,
+        or_(
+            models.Application.company.ilike(f"%{q}%"),
+            models.Application.role.ilike(f"%{q}%"),
+        ),
+    ).all()
+    return [_to_response(a) for a in apps]

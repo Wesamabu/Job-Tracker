@@ -3,7 +3,7 @@ import { Application, ApplicationFormData } from '../types';
 
 export const applicationsService = {
     getAll: async (): Promise<Application[]> => {
-        return apiClient.get<Application[]>('/applications');
+        return apiClient.get<Application[]>('/applications/');
     },
 
     getById: async (id: string): Promise<Application> => {
@@ -11,7 +11,7 @@ export const applicationsService = {
     },
 
     create: async (data: ApplicationFormData): Promise<Application> => {
-        return apiClient.post<Application>('/applications', data);
+        return apiClient.post<Application>('/applications/', data);
     },
 
     update: async (id: string, data: Partial<ApplicationFormData>): Promise<Application> => {

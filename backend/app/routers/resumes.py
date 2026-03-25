@@ -1,8 +1,8 @@
 """
-Resume endpoints — Issue #7  (feat/backend-resumes-api)
+Resume endpoints
 
 GET  /resumes      → list all resumes for the current user
-POST /resumes      → upload a resume file (PDF / DOCX) + optional display name
+POST /resumes      → upload a resume file (PDF / DOCX) + optional display name + category
 """
 
 import os
@@ -24,102 +24,81 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Resume
 
+# Hardcoded user_id=1 until authentication is implemented
+USER_ID = 1
+
 router = APIRouter(prefix="/resumes", tags=["Resumes"])
 
-# ---------------------------------------------------------------------------
-# Config
-# ---------------------------------------------------------------------------
-ALLOWED_EXTENSIONS = {".pdf", ".docx"}
+ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc"}
 
-# Resolve to  backend/uploads/  (one level up from app/)
 UPLOAD_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads"
 )
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 def _validate_file_type(filename: str) -> None:
-    """Raise 400 if the file extension is not .pdf or .docx."""
     ext = os.path.splitext(filename)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "error": {
-                    "code": "VALIDATION_ERROR",
-                    "message": (
-                        f"Invalid file type '{ext}'. "
-                        "Only PDF and DOCX files are allowed."
-                    ),
-                }
-            },
+            detail=f"Invalid file type '{ext}'. Only PDF, DOC, and DOCX files are allowed.",
         )
 
 
-def _to_camel(resume: Resume) -> dict:
-    """Convert a Resume ORM instance to the camelCase shape defined in API_CONTRACT."""
-    # Stored filename format: {uuid8}_{original_filename}
+def _to_response(resume: Resume) -> dict:
+    """Convert a Resume ORM instance to the shape the frontend expects."""
     stored = os.path.basename(resume.file_path)
     parts = stored.split("_", 1)
     original_filename = parts[1] if len(parts) > 1 else stored
 
+    ext = os.path.splitext(original_filename)[1].upper().lstrip(".")
+    file_format = ext if ext in ("PDF", "DOC", "DOCX") else "PDF"
+
     created = resume.created_at
-    created_str = (
-        created.isoformat() + "Z"
-        if created and created.tzinfo is None
-        else created.isoformat()
-        if created
-        else None
-    )
+    upload_date = created.strftime("%Y-%m-%d") if created else None
 
     return {
-        "id": resume.id,
-        "name": resume.name,
+        "id": str(resume.id),
+        "title": resume.name,
+        "category": resume.category or "general",
         "fileName": original_filename,
-        "createdAt": created_str,
+        "fileFormat": file_format,
+        "fileSize": "—",
+        "uploadDate": upload_date,
+        "tags": [],
+        "description": None,
+        "isPrimary": False,
     }
 
 
-# ---------------------------------------------------------------------------
-# GET /resumes
-# ---------------------------------------------------------------------------
+# ── GET /resumes ─────────────────────────────────────────────────────────────
+
 @router.get("")
 def list_resumes(db: Session = Depends(get_db)):
     """Return all resumes for the current user."""
-    # TODO: replace hardcoded user_id with real auth when implemented
-    user_id = 1
-
     resumes = (
         db.query(Resume)
-        .filter(Resume.user_id == user_id)
+        .filter(Resume.user_id == USER_ID)
         .order_by(Resume.created_at.desc())
         .all()
     )
-
-    items = [_to_camel(r) for r in resumes]
+    items = [_to_response(r) for r in resumes]
     return {"items": items, "total": len(items)}
 
 
-# ---------------------------------------------------------------------------
-# POST /resumes
-# ---------------------------------------------------------------------------
+# ── POST /resumes ─────────────────────────────────────────────────────────────
+
 @router.post("", status_code=status.HTTP_201_CREATED)
 def upload_resume(
     file: UploadFile = File(...),
     name: Optional[str] = Form(None),
+    category: Optional[str] = Form("general"),
     db: Session = Depends(get_db),
 ):
-    """Upload a new resume (PDF or DOCX) with an optional display name."""
-    # TODO: replace hardcoded user_id with real auth when implemented
-    user_id = 1
-
-    # 1. Validate file type
+    """Upload a new resume (PDF, DOC, or DOCX) with an optional display name and category."""
     _validate_file_type(file.filename)
 
-    # 2. Save file with a unique prefix to avoid name collisions
     unique_prefix = uuid.uuid4().hex[:8]
     safe_filename = f"{unique_prefix}_{file.filename}"
     file_path = os.path.join(UPLOAD_DIR, safe_filename)
@@ -130,25 +109,19 @@ def upload_resume(
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error": {
-                    "code": "INTERNAL_ERROR",
-                    "message": "Failed to save uploaded file.",
-                }
-            },
+            detail="Failed to save uploaded file.",
         )
 
-    # 3. Determine display name (fall back to filename without extension)
     display_name = name if name else os.path.splitext(file.filename)[0]
 
-    # 4. Persist metadata in DB
     resume = Resume(
-        user_id=user_id,
+        user_id=USER_ID,
         name=display_name,
         file_path=file_path,
+        category=category,
     )
     db.add(resume)
     db.commit()
     db.refresh(resume)
 
-    return _to_camel(resume)
+    return _to_response(resume)

@@ -36,6 +36,11 @@ class ApiClient {
             throw new Error(`API Error: ${response.statusText}`);
         }
 
+        // 204 No Content has no body
+        if (response.status === 204) {
+            return undefined as unknown as T;
+        }
+
         return response.json();
     }
 
@@ -48,6 +53,20 @@ class ApiClient {
             method: 'POST',
             body: JSON.stringify(data),
         });
+    }
+
+    async postForm<T>(endpoint: string, formData: FormData): Promise<T> {
+        const { params, ...fetchOptions } = {} as RequestOptions;
+        const url = `${this.baseUrl}${endpoint}`;
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData,
+            // Do NOT set Content-Type — browser sets it with boundary for multipart
+        });
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.statusText}`);
+        }
+        return response.json();
     }
 
     async put<T>(endpoint: string, data: unknown): Promise<T> {

@@ -16,23 +16,76 @@ import {
     useToast,
 } from '@chakra-ui/react';
 import { CustomDropdown } from '../CustomDropdown';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { MdSave } from 'react-icons/md';
+import apiClient from '@/shared/lib/apiClient';
 
 interface NewResumeModalProps {
     isOpen: boolean;
     onClose: () => void;
+    onResumeAdded?: () => void;
 }
 
-export const NewResumeModal = ({ isOpen, onClose }: NewResumeModalProps) => {
-    const [selectedCategory, setSelectedCategory] = useState<string | number>('');
-    const [customCategory, setCustomCategory] = useState('');
+export const NewResumeModal = ({ isOpen, onClose, onResumeAdded }: NewResumeModalProps) => {
+    const [selectedCategory, setSelectedCategory] = useState<string | number>('general');
+    const [isSaving, setIsSaving] = useState(false);
+
+    const titleRef = useRef<HTMLInputElement>(null);
+    const fileRef = useRef<HTMLInputElement>(null);
+
     const toast = useToast();
 
     const handleClose = () => {
-        setSelectedCategory('');
-        setCustomCategory('');
+        setSelectedCategory('general');
+        if (fileRef.current) fileRef.current.value = '';
         onClose();
+    };
+
+    const handleSave = async () => {
+        const title = titleRef.current?.value?.trim();
+        const file = fileRef.current?.files?.[0];
+
+        if (!title || !file) {
+            toast({
+                title: 'Missing required fields',
+                description: 'Please enter a title and select a file.',
+                status: 'warning',
+                duration: 3000,
+                isClosable: true,
+            });
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('name', title);
+        formData.append('category', String(selectedCategory) || 'general');
+
+        setIsSaving(true);
+        try {
+            await apiClient.postForm('/resumes', formData);
+
+            toast({
+                title: 'Resume uploaded.',
+                description: 'Your resume has been saved.',
+                status: 'success',
+                duration: 3000,
+                isClosable: true,
+            });
+
+            onResumeAdded?.();
+            handleClose();
+        } catch {
+            toast({
+                title: 'Upload failed',
+                description: 'Something went wrong. Please try again.',
+                status: 'error',
+                duration: 4000,
+                isClosable: true,
+            });
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
@@ -45,12 +98,13 @@ export const NewResumeModal = ({ isOpen, onClose }: NewResumeModalProps) => {
                     <VStack spacing={4}>
                         <FormControl isRequired>
                             <FormLabel>Resume Title</FormLabel>
-                            <Input placeholder="e.g. Software Engineer Resume 2026" />
+                            <Input ref={titleRef} placeholder="e.g. Software Engineer Resume 2026" />
                         </FormControl>
 
                         <FormControl isRequired>
                             <FormLabel>Resume File</FormLabel>
                             <Input
+                                ref={fileRef}
                                 type="file"
                                 accept=".pdf,.doc,.docx"
                                 pt={1}
@@ -66,10 +120,8 @@ export const NewResumeModal = ({ isOpen, onClose }: NewResumeModalProps) => {
                                         fontSize: 'sm',
                                         fontWeight: 'medium',
                                         cursor: 'pointer',
-                                        _hover: {
-                                            background: 'gray.200',
-                                        }
-                                    }
+                                        _hover: { background: 'gray.200' },
+                                    },
                                 }}
                             />
                             <Text fontSize="xs" color="gray.500" mt={2}>
@@ -92,25 +144,6 @@ export const NewResumeModal = ({ isOpen, onClose }: NewResumeModalProps) => {
                                 onChange={setSelectedCategory}
                             />
                         </FormControl>
-
-                        {selectedCategory === 'other' && (
-                            <FormControl>
-                                <FormLabel>Specify Category</FormLabel>
-                                <Input
-                                    placeholder="e.g. Freelance, Contract, Consulting"
-                                    value={customCategory}
-                                    onChange={(e) => setCustomCategory(e.target.value)}
-                                />
-                            </FormControl>
-                        )}
-
-                        <FormControl>
-                            <FormLabel>Description</FormLabel>
-                            <Textarea
-                                placeholder="Add notes about this resume version..."
-                                rows={3}
-                            />
-                        </FormControl>
                     </VStack>
                 </ModalBody>
 
@@ -119,20 +152,12 @@ export const NewResumeModal = ({ isOpen, onClose }: NewResumeModalProps) => {
                         leftIcon={<MdSave size="1.25em" />}
                         colorScheme="brand"
                         mr={3}
-                        onClick={() => {
-                            toast({
-                                title: 'Resume uploaded.',
-                                description: "Your resume has been uploaded successfully.",
-                                status: 'success',
-                                duration: 3000,
-                                isClosable: true,
-                            });
-                            handleClose();
-                        }}
+                        onClick={handleSave}
+                        isLoading={isSaving}
                     >
                         Save
                     </Button>
-                    <Button variant="outline" onClick={handleClose}>
+                    <Button variant="outline" onClick={handleClose} isDisabled={isSaving}>
                         Cancel
                     </Button>
                 </ModalFooter>

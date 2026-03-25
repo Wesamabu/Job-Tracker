@@ -1,14 +1,5 @@
 """
 SQLAlchemy models for Job Tracker.
-
-Models will be added here as features are implemented:
-- User         (Authentication)
-- Application  (Milestone 1)
-- Resume       (Milestone 1)
-
-Import Base from app.database and define each model as a class.
-All tables are created automatically on startup via Base.metadata.create_all()
-in main.py.
 """
 
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, func, Date
@@ -34,6 +25,7 @@ class Resume(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     name = Column(String, nullable=False)
     file_path = Column(String, nullable=False)
+    category = Column(String, nullable=True, default="general")
     created_at = Column(DateTime, server_default=func.now())
 
     # Relationships
@@ -47,15 +39,15 @@ class Application(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     resume_id = Column(Integer, ForeignKey("resumes.id"), nullable=True)
-    
-    # Combined fields from both branches
-    company_name = Column(String, nullable=False)
+
+    company = Column(String, nullable=False)
     role = Column(String, nullable=False)
-    date_applied = Column(DateTime, server_default=func.now())
-    status = Column(String, nullable=False, default="APPLIED")
+    location = Column(String, nullable=True)
+    status = Column(String, nullable=False, default="applied")
+    date_applied = Column(Date, nullable=True)
     job_description = Column(Text, nullable=True)
-    
-    # Audit fields
+    notes = Column(Text, nullable=True)
+
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 

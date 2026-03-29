@@ -15,3 +15,5 @@ frontend/.env
 .DS_Store
 Thumbs.db
 
+# Google Cloud Service Account Keys
+backend/*.json

@@ -86,6 +86,8 @@ function ApplicationsPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterField, setFilterField] = useState<'status' | 'company' | 'resumeUsed'>('status');
     const [filterValue, setFilterValue] = useState('all');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
     const [sortKey, setSortKey] = useState<SortKey>('appliedDate');
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
     const [openAccordionIndex, setOpenAccordionIndex] = useState<number | number[] | undefined>(undefined);
@@ -150,7 +152,11 @@ function ApplicationsPage() {
                 (filterField === 'company' && application.company === filterValue) ||
                 (filterField === 'resumeUsed' && (application.resumeUsed ?? '') === filterValue);
 
-            return matchesSearch && matchesFilter;
+            const appDate = application.appliedDate ? new Date(application.appliedDate) : null;
+            const matchesStart = !startDate || (appDate !== null && appDate >= new Date(startDate));
+            const matchesEnd = !endDate || (appDate !== null && appDate <= new Date(endDate));
+
+            return matchesSearch && matchesFilter && matchesStart && matchesEnd;
         });
 
         filtered.sort((a, b) => {
@@ -185,11 +191,16 @@ function ApplicationsPage() {
         setFilterValue(value);
     };
 
-    const handleClearFilter = () => setFilterValue('all');
+    const handleClearFilter = () => {
+        setFilterValue('all');
+        setStartDate('');
+        setEndDate('');
+    };
 
     const getFilterButtonText = () => {
-        if (filterValue === 'all') return 'Filter';
-        if (filterField === 'status') return statusLabels[filterValue as ApplicationStatus];
+        if (filterValue === 'all' && !startDate && !endDate) return 'Filter';
+        if (filterField === 'status' && filterValue !== 'all') return statusLabels[filterValue as ApplicationStatus];
+        if (startDate || endDate) return 'Date Filter';
         return filterValue;
     };
 
@@ -309,13 +320,13 @@ function ApplicationsPage() {
                                         borderColor="gray.200"
                                         _hover={{ bg: 'gray.50' }}
                                         _active={{ bg: 'gray.100' }}
-                                        fontWeight={filterValue !== 'all' ? 'semibold' : 'normal'}
-                                        color={filterValue !== 'all' ? 'brand.600' : 'gray.700'}
+                                        fontWeight={filterValue !== 'all' || startDate || endDate ? 'semibold' : 'normal'}
+                                        color={filterValue !== 'all' || startDate || endDate ? 'brand.600' : 'gray.700'}
                                     >
                                         {getFilterButtonText()}
                                     </MenuButton>
                                     <MenuList maxH="400px" overflowY="auto" p={2}>
-                                        {filterValue !== 'all' && (
+                                        {(filterValue !== 'all' || startDate || endDate) && (
                                             <>
                                                 <Box display="flex" justifyContent="flex-end">
                                                     <Button onClick={handleClearFilter} fontWeight="semibold" colorScheme="red" size="sm" leftIcon={<DeleteIcon />}>
@@ -397,6 +408,37 @@ function ApplicationsPage() {
                                                     </AccordionPanel>
                                                 </AccordionItem>
                                             )}
+                                            <MenuDivider my={0} />
+                                            <AccordionItem border="none">
+                                                <AccordionButton _hover={{ bg: 'gray.50' }}>
+                                                    <Box flex="1" textAlign="left" fontWeight="semibold" fontSize="sm">Date Applied</Box>
+                                                    <AccordionIcon />
+                                                </AccordionButton>
+                                                <AccordionPanel p={2} bg="gray.50">
+                                                    <VStack spacing={2}>
+                                                        <FormControl>
+                                                            <FormLabel fontSize="xs" mb={1}>From</FormLabel>
+                                                            <Input
+                                                                type="date"
+                                                                size="sm"
+                                                                value={startDate}
+                                                                onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }}
+                                                                bg="white"
+                                                            />
+                                                        </FormControl>
+                                                        <FormControl>
+                                                            <FormLabel fontSize="xs" mb={1}>To</FormLabel>
+                                                            <Input
+                                                                type="date"
+                                                                size="sm"
+                                                                value={endDate}
+                                                                onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }}
+                                                                bg="white"
+                                                            />
+                                                        </FormControl>
+                                                    </VStack>
+                                                </AccordionPanel>
+                                            </AccordionItem>
                                         </Accordion>
                                     </MenuList>
                                 </Menu>

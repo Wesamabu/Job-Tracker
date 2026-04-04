@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import Optional
+from datetime import date
 
 from app.database import get_db
 from app import models, schemas
@@ -124,19 +125,54 @@ def delete_application(app_id: int, db: Session = Depends(get_db)):
     db.commit()
 
 
+# ── GET /applications/filter ─────────────────────────────────────────────────
+
+@router.get("/filter", response_model=list[schemas.ApplicationResponse])
+def get_filtered_applications(
+    status: Optional[str] = Query(None, description="Filter by application status"),
+    start_date: Optional[date] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
+    db: Session = Depends(get_db),
+):
+    """Filter applications by status and/or date range."""
+    query = db.query(models.Application).filter(
+        models.Application.user_id == USER_ID
+    )
+
+    if status:
+        query = query.filter(models.Application.status == status)
+    if start_date:
+        query = query.filter(models.Application.date_applied >= start_date)
+    if end_date:
+        query = query.filter(models.Application.date_applied <= end_date)
+
+    return [_to_response(a) for a in query.all()]
+
+
 # ── GET /applications/search ─────────────────────────────────────────────────
 
 @router.get("/search/", response_model=list[schemas.ApplicationResponse])
 def search_applications(
-    q: str = Query(..., description="Search by company or role"),
+    q: str = Query(..., description="Search by company, role, job description, or id"),
     db: Session = Depends(get_db),
 ):
-    """Search applications by company name or job title."""
-    apps = db.query(models.Application).filter(
-        models.Application.user_id == USER_ID,
-        or_(
-            models.Application.company.ilike(f"%{q}%"),
-            models.Application.role.ilike(f"%{q}%"),
-        ),
-    ).all()
-    return [_to_response(a) for a in apps]
+    """Search applications by company name, job title, job description, or id."""
+    query = db.query(models.Application).filter(
+        models.Application.user_id == USER_ID
+    )
+
+    # Try to interpret q as a number for ID search
+    try:
+        q_number = int(q)
+    except ValueError:
+        q_number = None
+
+    filters = [
+        models.Application.company.ilike(f"%{q}%"),
+        models.Application.role.ilike(f"%{q}%"),
+        models.Application.job_description.ilike(f"%{q}%"),
+    ]
+    if q_number is not None:
+        filters.append(models.Application.id == q_number)
+
+    return [_to_response(a) for a in query.filter(or_(*filters)).all()]

@@ -31,6 +31,9 @@ import {
     Table,
     Tbody,
     Td,
+    Tag,
+    TagCloseButton,
+    TagLabel,
     Text,
     Th,
     Thead,
@@ -38,6 +41,8 @@ import {
     useDisclosure,
     useToast,
     VStack,
+    Wrap,
+    WrapItem,
 } from '@chakra-ui/react';
 import { AddIcon, DeleteIcon, ViewIcon } from '@chakra-ui/icons';
 import { useEffect, useMemo, useState } from 'react';
@@ -168,7 +173,7 @@ function ApplicationsPage() {
         });
 
         return filtered;
-    }, [applications, searchTerm, filterField, filterValue, sortKey, sortDirection]);
+    }, [applications, searchTerm, filterField, filterValue, startDate, endDate, sortKey, sortDirection]);
 
     const uniqueCompanies = useMemo(() =>
         Array.from(new Set(applications.map(app => app.company).filter(Boolean))).sort(),
@@ -443,6 +448,44 @@ function ApplicationsPage() {
                                     </MenuList>
                                 </Menu>
                             </HStack>
+
+                            {/* Active filter tags */}
+                            {(filterValue !== 'all' || startDate || endDate) && (
+                                <Wrap spacing={2} align="center">
+                                    <Text fontSize="sm" color="gray.500">Active filters:</Text>
+                                    {filterValue !== 'all' && (
+                                        <WrapItem>
+                                            <Tag size="md" colorScheme="brand" borderRadius="full">
+                                                <TagLabel>
+                                                    {filterField === 'status' ? `Status: ${statusLabels[filterValue as ApplicationStatus]}` : filterField === 'company' ? `Company: ${filterValue}` : `Resume: ${filterValue}`}
+                                                </TagLabel>
+                                                <TagCloseButton onClick={() => { setFilterValue('all'); setCurrentPage(1); }} />
+                                            </Tag>
+                                        </WrapItem>
+                                    )}
+                                    {startDate && (
+                                        <WrapItem>
+                                            <Tag size="md" colorScheme="brand" borderRadius="full">
+                                                <TagLabel>From: {startDate}</TagLabel>
+                                                <TagCloseButton onClick={() => { setStartDate(''); setCurrentPage(1); }} />
+                                            </Tag>
+                                        </WrapItem>
+                                    )}
+                                    {endDate && (
+                                        <WrapItem>
+                                            <Tag size="md" colorScheme="brand" borderRadius="full">
+                                                <TagLabel>To: {endDate}</TagLabel>
+                                                <TagCloseButton onClick={() => { setEndDate(''); setCurrentPage(1); }} />
+                                            </Tag>
+                                        </WrapItem>
+                                    )}
+                                    <WrapItem>
+                                        <Button size="xs" variant="ghost" colorScheme="red" onClick={handleClearFilter}>
+                                            Clear all
+                                        </Button>
+                                    </WrapItem>
+                                </Wrap>
+                            )}
 
                             <SortableDataTable
                                 columns={applicationTableColumns}

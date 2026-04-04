@@ -1,8 +1,9 @@
 """
 Resume endpoints
 
-GET  /resumes      → list all resumes for the current user
-POST /resumes      → upload a resume file (PDF / DOCX) + optional display name + category
+GET    /resumes          → list all resumes for the current user
+POST   /resumes          → upload a resume file (PDF / DOCX) + optional display name + category
+DELETE /resumes/{id}     → delete a resume by id
 """
 
 import os
@@ -125,3 +126,27 @@ def upload_resume(
     db.refresh(resume)
 
     return _to_response(resume)
+
+
+# ── DELETE /resumes/{resume_id} ───────────────────────────────────────────────
+
+@router.delete("/{resume_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_resume(resume_id: int, db: Session = Depends(get_db)):
+    """Delete a resume by id. Also removes the file from disk."""
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == USER_ID
+    ).first()
+
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found."
+        )
+
+    # Delete the file from disk if it exists
+    if os.path.exists(resume.file_path):
+        os.remove(resume.file_path)
+
+    db.delete(resume)
+    db.commit()

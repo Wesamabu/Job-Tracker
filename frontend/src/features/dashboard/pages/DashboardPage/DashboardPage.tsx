@@ -11,19 +11,12 @@ import {
     HStack,
     Text,
     Divider,
-    Button,
     Skeleton,
     SkeletonText,
-    Icon,
     Flex,
-    useDisclosure,
 } from '@chakra-ui/react';
-import { AddIcon } from '@chakra-ui/icons';
-import { MdFileUpload } from 'react-icons/md';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useState, useEffect } from 'react';
-import { NewApplicationModal } from '../../../../shared/components/Modals/NewApplicationModal';
-import { NewResumeModal } from '../../../../shared/components/Modals/NewResumeModal';
 import { dashboardService } from '../../services/dashboard.service';
 import { DashboardStats } from '../../types';
 
@@ -35,22 +28,13 @@ function DashboardPage() {
         interviews: 0,
         offers: 0,
     });
-    const [refreshKey, setRefreshKey] = useState(0);
-
-    const { isOpen: isApplicationModalOpen, onOpen: onApplicationModalOpen, onClose: onApplicationModalClose } = useDisclosure();
-    const { isOpen: isResumeModalOpen, onOpen: onResumeModalOpen, onClose: onResumeModalClose } = useDisclosure();
-
     useEffect(() => {
         setIsLoading(true);
         dashboardService.getStats()
             .then(setStats)
             .catch(console.error)
             .finally(() => setIsLoading(false));
-    }, [refreshKey]);
-
-    const handleApplicationAdded = () => {
-        setRefreshKey(k => k + 1);
-    };
+    }, []);
 
     const hasData = stats.totalApplications > 0;
 
@@ -79,27 +63,6 @@ function DashboardPage() {
                             Overview of your job application activity
                         </Text>
                     </Box>
-                    <HStack spacing={3} flexWrap="wrap" justify={{ base: 'stretch', md: 'flex-end' }}>
-                        <Button
-                            onClick={onApplicationModalOpen}
-                            leftIcon={<AddIcon />}
-                            colorScheme="brand"
-                            size="sm"
-                            flex={{ base: '1', sm: 'initial' }}
-                        >
-                            New Application
-                        </Button>
-                        <Button
-                            onClick={onResumeModalOpen}
-                            leftIcon={<MdFileUpload size="1.25em" />}
-                            variant="outline"
-                            colorScheme="brand"
-                            size="sm"
-                            flex={{ base: '1', sm: 'initial' }}
-                        >
-                            New Resume
-                        </Button>
-                    </HStack>
                 </Flex>
 
                 {/* Stats Cards */}
@@ -137,21 +100,12 @@ function DashboardPage() {
                 {!isLoading && !hasData ? (
                     <Box p={{ base: 8, md: 12 }} bg="white" borderRadius="lg" boxShadow="md" textAlign="center">
                         <VStack spacing={4}>
-                            <Icon as={AddIcon} boxSize={12} color="gray.400" />
                             <Heading size={{ base: 'sm', md: 'md' }} color="gray.700">
                                 Welcome to Job Tracker!
                             </Heading>
                             <Text color="gray.600" maxW="md" fontSize={{ base: 'sm', md: 'md' }}>
-                                Start by adding your first job application or uploading your resume.
+                                Head to the Applications page to start tracking your job applications.
                             </Text>
-                            <HStack spacing={4} mt={4} flexWrap="wrap" justify="center">
-                                <Button onClick={onApplicationModalOpen} leftIcon={<AddIcon />} colorScheme="brand" size={{ base: 'sm', md: 'md' }}>
-                                    Add First Application
-                                </Button>
-                                <Button onClick={onResumeModalOpen} leftIcon={<MdFileUpload size="1.25em" />} variant="outline" colorScheme="brand" size={{ base: 'sm', md: 'md' }}>
-                                    Upload Resume
-                                </Button>
-                            </HStack>
                         </VStack>
                     </Box>
                 ) : (
@@ -250,16 +204,6 @@ function DashboardPage() {
                 )}
             </VStack>
 
-            <NewApplicationModal
-                isOpen={isApplicationModalOpen}
-                onClose={onApplicationModalClose}
-                onResumeModalOpen={onResumeModalOpen}
-                onApplicationAdded={handleApplicationAdded}
-            />
-            <NewResumeModal
-                isOpen={isResumeModalOpen}
-                onClose={onResumeModalClose}
-            />
         </Container>
     );
 }

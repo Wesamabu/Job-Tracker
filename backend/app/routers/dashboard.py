@@ -1,10 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.database import get_db
-from app.models import Application
-
-# Hardcoded user_id=1 until authentication is implemented
-USER_ID = 1
+from app.auth.dependencies import get_current_user, get_db
+from app.models import Application, User
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -17,9 +14,9 @@ ACTIVE_STATUSES = ["applied", "screening", "interviewing", "interview"]
 
 
 @router.get("/stats")
-def get_dashboard_stats(db: Session = Depends(get_db)):
+def get_dashboard_stats(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Return summary stats for the dashboard."""
-    base = db.query(Application).filter(Application.user_id == USER_ID)
+    base = db.query(Application).filter(Application.user_id == current_user.id)
 
     total_apps = base.count()
     total_interviews = base.filter(Application.status.in_(INTERVIEW_STATUSES)).count()
@@ -40,11 +37,11 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
 
 
 @router.get("/activity")
-def get_recent_activity(db: Session = Depends(get_db)):
+def get_recent_activity(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Return the 10 most recently added applications as activity feed."""
     recent = (
         db.query(Application)
-        .filter(Application.user_id == USER_ID)
+        .filter(Application.user_id == current_user.id)
         .order_by(Application.created_at.desc())
         .limit(10)
         .all()

@@ -16,9 +16,10 @@ import {
 } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { CustomDropdown } from '../CustomDropdown';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { MdSave } from 'react-icons/md';
 import applicationsService from '@/features/applications/services/applications.service';
+import apiClient from '@/shared/lib/apiClient';
 
 interface NewApplicationModalProps {
     isOpen: boolean;
@@ -36,6 +37,17 @@ export const NewApplicationModal = ({
     const [selectedStatus, setSelectedStatus] = useState<string | number>('applied');
     const [selectedResumeId, setSelectedResumeId] = useState<string | number>('');
     const [isSaving, setIsSaving] = useState(false);
+    const [resumeOptions, setResumeOptions] = useState<{ id: string | number; label: string; value: string | number }[]>([]);
+
+    useEffect(() => {
+        if (isOpen) {
+            apiClient.get<{ items: { id: number; title?: string; name?: string }[] }>('/resumes')
+                .then((data) => {
+                    setResumeOptions(data.items.map((r) => ({ id: r.id, label: r.title || r.name || 'Untitled', value: r.id })));
+                })
+                .catch(() => setResumeOptions([]));
+        }
+    }, [isOpen]);
 
     const jobTitleRef = useRef<HTMLInputElement>(null);
     const companyRef = useRef<HTMLInputElement>(null);
@@ -49,6 +61,7 @@ export const NewApplicationModal = ({
     const handleClose = () => {
         setSelectedStatus('applied');
         setSelectedResumeId('');
+        setResumeOptions([]);
         onClose();
     };
 
@@ -154,7 +167,7 @@ export const NewApplicationModal = ({
                             <FormLabel>Resume Used (optional)</FormLabel>
                             <CustomDropdown
                                 placeholder="Select a resume (optional)"
-                                options={[]}
+                                options={resumeOptions}
                                 value={selectedResumeId}
                                 onChange={setSelectedResumeId}
                                 action={{

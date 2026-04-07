@@ -25,12 +25,16 @@ import {
     ModalFooter,
     ModalHeader,
     ModalOverlay,
+    Portal,
     Select,
     Skeleton,
     Spinner,
     Table,
     Tbody,
     Td,
+    Tag,
+    TagCloseButton,
+    TagLabel,
     Text,
     Th,
     Thead,
@@ -38,6 +42,8 @@ import {
     useDisclosure,
     useToast,
     VStack,
+    Wrap,
+    WrapItem,
 } from '@chakra-ui/react';
 import { AddIcon, DeleteIcon, ViewIcon } from '@chakra-ui/icons';
 import { useEffect, useMemo, useState } from 'react';
@@ -86,6 +92,8 @@ function ApplicationsPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterField, setFilterField] = useState<'status' | 'company' | 'resumeUsed'>('status');
     const [filterValue, setFilterValue] = useState('all');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
     const [sortKey, setSortKey] = useState<SortKey>('appliedDate');
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
     const [openAccordionIndex, setOpenAccordionIndex] = useState<number | number[] | undefined>(undefined);
@@ -150,7 +158,11 @@ function ApplicationsPage() {
                 (filterField === 'company' && application.company === filterValue) ||
                 (filterField === 'resumeUsed' && (application.resumeUsed ?? '') === filterValue);
 
-            return matchesSearch && matchesFilter;
+            const appDate = application.appliedDate ? new Date(application.appliedDate) : null;
+            const matchesStart = !startDate || (appDate !== null && appDate >= new Date(startDate));
+            const matchesEnd = !endDate || (appDate !== null && appDate <= new Date(endDate));
+
+            return matchesSearch && matchesFilter && matchesStart && matchesEnd;
         });
 
         filtered.sort((a, b) => {
@@ -162,7 +174,7 @@ function ApplicationsPage() {
         });
 
         return filtered;
-    }, [applications, searchTerm, filterField, filterValue, sortKey, sortDirection]);
+    }, [applications, searchTerm, filterField, filterValue, startDate, endDate, sortKey, sortDirection]);
 
     const uniqueCompanies = useMemo(() =>
         Array.from(new Set(applications.map(app => app.company).filter(Boolean))).sort(),
@@ -185,11 +197,16 @@ function ApplicationsPage() {
         setFilterValue(value);
     };
 
-    const handleClearFilter = () => setFilterValue('all');
+    const handleClearFilter = () => {
+        setFilterValue('all');
+        setStartDate('');
+        setEndDate('');
+    };
 
     const getFilterButtonText = () => {
-        if (filterValue === 'all') return 'Filter';
-        if (filterField === 'status') return statusLabels[filterValue as ApplicationStatus];
+        if (filterValue === 'all' && !startDate && !endDate) return 'Filter';
+        if (filterField === 'status' && filterValue !== 'all') return statusLabels[filterValue as ApplicationStatus];
+        if (startDate || endDate) return 'Date Filter';
         return filterValue;
     };
 
@@ -309,13 +326,13 @@ function ApplicationsPage() {
                                         borderColor="gray.200"
                                         _hover={{ bg: 'gray.50' }}
                                         _active={{ bg: 'gray.100' }}
-                                        fontWeight={filterValue !== 'all' ? 'semibold' : 'normal'}
-                                        color={filterValue !== 'all' ? 'brand.600' : 'gray.700'}
+                                        fontWeight={filterValue !== 'all' || startDate || endDate ? 'semibold' : 'normal'}
+                                        color={filterValue !== 'all' || startDate || endDate ? 'brand.600' : 'gray.700'}
                                     >
                                         {getFilterButtonText()}
                                     </MenuButton>
                                     <MenuList maxH="400px" overflowY="auto" p={2}>
-                                        {filterValue !== 'all' && (
+                                        {(filterValue !== 'all' || startDate || endDate) && (
                                             <>
                                                 <Box display="flex" justifyContent="flex-end">
                                                     <Button onClick={handleClearFilter} fontWeight="semibold" colorScheme="red" size="sm" leftIcon={<DeleteIcon />}>
@@ -397,10 +414,79 @@ function ApplicationsPage() {
                                                     </AccordionPanel>
                                                 </AccordionItem>
                                             )}
+                                            <MenuDivider my={0} />
+                                            <AccordionItem border="none">
+                                                <AccordionButton _hover={{ bg: 'gray.50' }}>
+                                                    <Box flex="1" textAlign="left" fontWeight="semibold" fontSize="sm">Date Applied</Box>
+                                                    <AccordionIcon />
+                                                </AccordionButton>
+                                                <AccordionPanel p={2} bg="gray.50">
+                                                    <VStack spacing={2}>
+                                                        <FormControl>
+                                                            <FormLabel fontSize="xs" mb={1}>From</FormLabel>
+                                                            <Input
+                                                                type="date"
+                                                                size="sm"
+                                                                value={startDate}
+                                                                onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }}
+                                                                bg="white"
+                                                            />
+                                                        </FormControl>
+                                                        <FormControl>
+                                                            <FormLabel fontSize="xs" mb={1}>To</FormLabel>
+                                                            <Input
+                                                                type="date"
+                                                                size="sm"
+                                                                value={endDate}
+                                                                onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }}
+                                                                bg="white"
+                                                            />
+                                                        </FormControl>
+                                                    </VStack>
+                                                </AccordionPanel>
+                                            </AccordionItem>
                                         </Accordion>
                                     </MenuList>
                                 </Menu>
                             </HStack>
+
+                            {/* Active filter tags */}
+                            {(filterValue !== 'all' || startDate || endDate) && (
+                                <Wrap spacing={2} align="center">
+                                    <Text fontSize="sm" color="gray.500">Active filters:</Text>
+                                    {filterValue !== 'all' && (
+                                        <WrapItem>
+                                            <Tag size="md" colorScheme="brand" borderRadius="full">
+                                                <TagLabel>
+                                                    {filterField === 'status' ? `Status: ${statusLabels[filterValue as ApplicationStatus]}` : filterField === 'company' ? `Company: ${filterValue}` : `Resume: ${filterValue}`}
+                                                </TagLabel>
+                                                <TagCloseButton onClick={() => { setFilterValue('all'); setCurrentPage(1); }} />
+                                            </Tag>
+                                        </WrapItem>
+                                    )}
+                                    {startDate && (
+                                        <WrapItem>
+                                            <Tag size="md" colorScheme="brand" borderRadius="full">
+                                                <TagLabel>From: {startDate}</TagLabel>
+                                                <TagCloseButton onClick={() => { setStartDate(''); setCurrentPage(1); }} />
+                                            </Tag>
+                                        </WrapItem>
+                                    )}
+                                    {endDate && (
+                                        <WrapItem>
+                                            <Tag size="md" colorScheme="brand" borderRadius="full">
+                                                <TagLabel>To: {endDate}</TagLabel>
+                                                <TagCloseButton onClick={() => { setEndDate(''); setCurrentPage(1); }} />
+                                            </Tag>
+                                        </WrapItem>
+                                    )}
+                                    <WrapItem>
+                                        <Button size="xs" variant="ghost" colorScheme="red" onClick={handleClearFilter}>
+                                            Clear all
+                                        </Button>
+                                    </WrapItem>
+                                </Wrap>
+                            )}
 
                             <SortableDataTable
                                 columns={applicationTableColumns}
@@ -437,11 +523,13 @@ function ApplicationsPage() {
                                                 <MenuButton as={Button} bg="gray.200" _hover={{ bg: 'gray.300' }} _active={{ bg: 'gray.400' }} w="8px" h="full" minW="unset" p={0} position="absolute" top="0" right="0" borderRadius="0" display="flex" alignItems="center" justifyContent="center" overflow="hidden">
                                                     <Text fontSize="md" fontWeight="bold" letterSpacing="0.1em" whiteSpace="nowrap">⋮</Text>
                                                 </MenuButton>
-                                                <MenuList>
-                                                    <MenuItem onClick={() => handleOpenDetails(application)} fontSize="14px" icon={<ViewIcon />}>
-                                                        View Details
-                                                    </MenuItem>
-                                                </MenuList>
+                                                <Portal>
+                                                    <MenuList>
+                                                        <MenuItem onClick={() => handleOpenDetails(application)} fontSize="14px" icon={<ViewIcon />}>
+                                                            View Details
+                                                        </MenuItem>
+                                                    </MenuList>
+                                                </Portal>
                                             </Menu>
                                         </Td>
                                     </Tr>

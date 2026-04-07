@@ -2,12 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import Optional
+from datetime import date
 
 from app.database import get_db
 from app import models, schemas
-
-# Hardcoded user_id=1 until authentication is implemented
-USER_ID = 1
+from app.auth.dependencies import get_current_user
 
 router = APIRouter(prefix="/applications", tags=["Applications"])
 
@@ -31,10 +30,10 @@ def _to_response(app: models.Application) -> dict:
 # ── GET /applications ────────────────────────────────────────────────────────
 
 @router.get("/", response_model=list[schemas.ApplicationResponse])
-def get_all_applications(db: Session = Depends(get_db)):
+def get_all_applications(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """Return all applications for the current user."""
     apps = db.query(models.Application).filter(
-        models.Application.user_id == USER_ID
+        models.Application.user_id == current_user.id
     ).order_by(models.Application.created_at.desc()).all()
     return [_to_response(a) for a in apps]
 
@@ -42,11 +41,11 @@ def get_all_applications(db: Session = Depends(get_db)):
 # ── GET /applications/{id} ───────────────────────────────────────────────────
 
 @router.get("/{app_id}", response_model=schemas.ApplicationResponse)
-def get_application(app_id: int, db: Session = Depends(get_db)):
+def get_application(app_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """Return a single application by ID."""
     app = db.query(models.Application).filter(
         models.Application.id == app_id,
-        models.Application.user_id == USER_ID,
+        models.Application.user_id == current_user.id,
     ).first()
     if not app:
         raise HTTPException(status_code=404, detail="Application not found")
@@ -56,10 +55,10 @@ def get_application(app_id: int, db: Session = Depends(get_db)):
 # ── POST /applications ───────────────────────────────────────────────────────
 
 @router.post("/", response_model=schemas.ApplicationResponse, status_code=201)
-def create_application(data: schemas.ApplicationCreate, db: Session = Depends(get_db)):
+def create_application(data: schemas.ApplicationCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """Create a new application."""
     new_app = models.Application(
-        user_id=USER_ID,
+        user_id=current_user.id,
         company=data.company,
         role=data.jobTitle,
         location=data.location,
@@ -78,11 +77,11 @@ def create_application(data: schemas.ApplicationCreate, db: Session = Depends(ge
 # ── PUT /applications/{id} ───────────────────────────────────────────────────
 
 @router.put("/{app_id}", response_model=schemas.ApplicationResponse)
-def update_application(app_id: int, data: schemas.ApplicationUpdate, db: Session = Depends(get_db)):
+def update_application(app_id: int, data: schemas.ApplicationUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """Update an existing application."""
     app = db.query(models.Application).filter(
         models.Application.id == app_id,
-        models.Application.user_id == USER_ID,
+        models.Application.user_id == current_user.id,
     ).first()
     if not app:
         raise HTTPException(status_code=404, detail="Application not found")
@@ -112,11 +111,11 @@ def update_application(app_id: int, data: schemas.ApplicationUpdate, db: Session
 # ── DELETE /applications/{id} ────────────────────────────────────────────────
 
 @router.delete("/{app_id}", status_code=204)
-def delete_application(app_id: int, db: Session = Depends(get_db)):
+def delete_application(app_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """Delete an application."""
     app = db.query(models.Application).filter(
         models.Application.id == app_id,
-        models.Application.user_id == USER_ID,
+        models.Application.user_id == current_user.id,
     ).first()
     if not app:
         raise HTTPException(status_code=404, detail="Application not found")
@@ -124,19 +123,56 @@ def delete_application(app_id: int, db: Session = Depends(get_db)):
     db.commit()
 
 
+# ── GET /applications/filter ─────────────────────────────────────────────────
+
+@router.get("/filter", response_model=list[schemas.ApplicationResponse])
+def get_filtered_applications(
+    status: Optional[str] = Query(None, description="Filter by application status"),
+    start_date: Optional[date] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Filter applications by status and/or date range."""
+    query = db.query(models.Application).filter(
+        models.Application.user_id == current_user.id
+    )
+
+    if status:
+        query = query.filter(models.Application.status == status)
+    if start_date:
+        query = query.filter(models.Application.date_applied >= start_date)
+    if end_date:
+        query = query.filter(models.Application.date_applied <= end_date)
+
+    return [_to_response(a) for a in query.all()]
+
+
 # ── GET /applications/search ─────────────────────────────────────────────────
 
 @router.get("/search/", response_model=list[schemas.ApplicationResponse])
 def search_applications(
-    q: str = Query(..., description="Search by company or role"),
+    q: str = Query(..., description="Search by company, role, job description, or id"),
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
 ):
-    """Search applications by company name or job title."""
-    apps = db.query(models.Application).filter(
-        models.Application.user_id == USER_ID,
-        or_(
-            models.Application.company.ilike(f"%{q}%"),
-            models.Application.role.ilike(f"%{q}%"),
-        ),
-    ).all()
-    return [_to_response(a) for a in apps]
+    """Search applications by company name, job title, job description, or id."""
+    query = db.query(models.Application).filter(
+        models.Application.user_id == current_user.id
+    )
+
+    # Try to interpret q as a number for ID search
+    try:
+        q_number = int(q)
+    except ValueError:
+        q_number = None
+
+    filters = [
+        models.Application.company.ilike(f"%{q}%"),
+        models.Application.role.ilike(f"%{q}%"),
+        models.Application.job_description.ilike(f"%{q}%"),
+    ]
+    if q_number is not None:
+        filters.append(models.Application.id == q_number)
+
+    return [_to_response(a) for a in query.filter(or_(*filters)).all()]

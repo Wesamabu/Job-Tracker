@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, AliasChoices
 from datetime import date
 from typing import Optional
 from enum import Enum
@@ -53,3 +53,9 @@ class StatusEnum(str, Enum):
     rejected = "rejected"
     accepted = "accepted"
     declined = "declined"
+
+
+# ── Job URL Fetching ──────────────────────────────────────────────────────
+
+class JobUrlRequest(BaseModel):
+    url: str  # Mandatory field: must be "url"

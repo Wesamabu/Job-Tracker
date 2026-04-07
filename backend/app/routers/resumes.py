@@ -22,11 +22,8 @@ from fastapi import (
 )
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.models import Resume
-
-# Hardcoded user_id=1 until authentication is implemented
-USER_ID = 1
+from app.auth.dependencies import get_current_user, get_db
+from app.models import Resume, User
 
 router = APIRouter(prefix="/resumes", tags=["Resumes"])
 
@@ -76,11 +73,11 @@ def _to_response(resume: Resume) -> dict:
 # ── GET /resumes ─────────────────────────────────────────────────────────────
 
 @router.get("")
-def list_resumes(db: Session = Depends(get_db)):
+def list_resumes(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Return all resumes for the current user."""
     resumes = (
         db.query(Resume)
-        .filter(Resume.user_id == USER_ID)
+        .filter(Resume.user_id == current_user.id)
         .order_by(Resume.created_at.desc())
         .all()
     )
@@ -96,6 +93,7 @@ def upload_resume(
     name: Optional[str] = Form(None),
     category: Optional[str] = Form("general"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Upload a new resume (PDF, DOC, or DOCX) with an optional display name and category."""
     _validate_file_type(file.filename)
@@ -116,7 +114,7 @@ def upload_resume(
     display_name = name if name else os.path.splitext(file.filename)[0]
 
     resume = Resume(
-        user_id=USER_ID,
+        user_id=current_user.id,
         name=display_name,
         file_path=file_path,
         category=category,
@@ -131,11 +129,11 @@ def upload_resume(
 # ── DELETE /resumes/{resume_id} ───────────────────────────────────────────────
 
 @router.delete("/{resume_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_resume(resume_id: int, db: Session = Depends(get_db)):
+def delete_resume(resume_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Delete a resume by id. Also removes the file from disk."""
     resume = db.query(Resume).filter(
         Resume.id == resume_id,
-        Resume.user_id == USER_ID
+        Resume.user_id == current_user.id
     ).first()
 
     if not resume:

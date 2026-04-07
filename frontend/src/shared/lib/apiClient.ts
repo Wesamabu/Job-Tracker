@@ -24,10 +24,16 @@ class ApiClient {
             url += `?${queryString}`;
         }
 
+        const token = localStorage.getItem('access_token');
+        const authHeader: Record<string, string> = token
+            ? { Authorization: `Bearer ${token}` }
+            : {};
+
         const response = await fetch(url, {
             ...fetchOptions,
             headers: {
                 'Content-Type': 'application/json',
+                ...authHeader,
                 ...fetchOptions.headers,
             },
         });
@@ -56,11 +62,17 @@ class ApiClient {
     }
 
     async postForm<T>(endpoint: string, formData: FormData): Promise<T> {
-        const { params, ...fetchOptions } = {} as RequestOptions;
         const url = `${this.baseUrl}${endpoint}`;
+        const token = localStorage.getItem('access_token');
+        const authHeader: Record<string, string> = token
+            ? { Authorization: `Bearer ${token}` }
+            : {};
         const response = await fetch(url, {
             method: 'POST',
             body: formData,
+            headers: {
+                ...authHeader,
+            },
             // Do NOT set Content-Type — browser sets it with boundary for multipart
         });
         if (!response.ok) {

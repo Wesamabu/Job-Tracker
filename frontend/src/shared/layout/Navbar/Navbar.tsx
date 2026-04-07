@@ -24,16 +24,17 @@ import {
     Stack,
 } from '@chakra-ui/react';
 import { HamburgerIcon } from '@chakra-ui/icons';
-import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
+import authService from '@/features/auth/services/auth.service';
 
 function Navbar() {
     const location = useLocation();
+    const navigate = useNavigate();
     const { isOpen, onOpen, onClose } = useDisclosure();
 
-    const handleLogout = () => {
-        // TODO: Implement logout functionality
-        console.log('Logout clicked');
-        // Clear auth state and redirect to login
+    const handleLogout = async () => {
+        await authService.logout();
+        navigate('/login', { replace: true });
     };
 
     const isActive = (path: string) => location.pathname === path;

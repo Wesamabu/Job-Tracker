@@ -6,9 +6,7 @@ from datetime import date
 
 from app.database import get_db
 from app import models, schemas
-
-# Hardcoded user_id=1 until authentication is implemented
-USER_ID = 1
+from app.auth.dependencies import get_current_user
 
 router = APIRouter(prefix="/applications", tags=["Applications"])
 
@@ -32,10 +30,10 @@ def _to_response(app: models.Application) -> dict:
 # ── GET /applications ────────────────────────────────────────────────────────
 
 @router.get("/", response_model=list[schemas.ApplicationResponse])
-def get_all_applications(db: Session = Depends(get_db)):
+def get_all_applications(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """Return all applications for the current user."""
     apps = db.query(models.Application).filter(
-        models.Application.user_id == USER_ID
+        models.Application.user_id == current_user.id
     ).order_by(models.Application.created_at.desc()).all()
     return [_to_response(a) for a in apps]
 
@@ -43,11 +41,11 @@ def get_all_applications(db: Session = Depends(get_db)):
 # ── GET /applications/{id} ───────────────────────────────────────────────────
 
 @router.get("/{app_id}", response_model=schemas.ApplicationResponse)
-def get_application(app_id: int, db: Session = Depends(get_db)):
+def get_application(app_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """Return a single application by ID."""
     app = db.query(models.Application).filter(
         models.Application.id == app_id,
-        models.Application.user_id == USER_ID,
+        models.Application.user_id == current_user.id,
     ).first()
     if not app:
         raise HTTPException(status_code=404, detail="Application not found")
@@ -57,10 +55,10 @@ def get_application(app_id: int, db: Session = Depends(get_db)):
 # ── POST /applications ───────────────────────────────────────────────────────
 
 @router.post("/", response_model=schemas.ApplicationResponse, status_code=201)
-def create_application(data: schemas.ApplicationCreate, db: Session = Depends(get_db)):
+def create_application(data: schemas.ApplicationCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """Create a new application."""
     new_app = models.Application(
-        user_id=USER_ID,
+        user_id=current_user.id,
         company=data.company,
         role=data.jobTitle,
         location=data.location,
@@ -79,11 +77,11 @@ def create_application(data: schemas.ApplicationCreate, db: Session = Depends(ge
 # ── PUT /applications/{id} ───────────────────────────────────────────────────
 
 @router.put("/{app_id}", response_model=schemas.ApplicationResponse)
-def update_application(app_id: int, data: schemas.ApplicationUpdate, db: Session = Depends(get_db)):
+def update_application(app_id: int, data: schemas.ApplicationUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """Update an existing application."""
     app = db.query(models.Application).filter(
         models.Application.id == app_id,
-        models.Application.user_id == USER_ID,
+        models.Application.user_id == current_user.id,
     ).first()
     if not app:
         raise HTTPException(status_code=404, detail="Application not found")
@@ -113,11 +111,11 @@ def update_application(app_id: int, data: schemas.ApplicationUpdate, db: Session
 # ── DELETE /applications/{id} ────────────────────────────────────────────────
 
 @router.delete("/{app_id}", status_code=204)
-def delete_application(app_id: int, db: Session = Depends(get_db)):
+def delete_application(app_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """Delete an application."""
     app = db.query(models.Application).filter(
         models.Application.id == app_id,
-        models.Application.user_id == USER_ID,
+        models.Application.user_id == current_user.id,
     ).first()
     if not app:
         raise HTTPException(status_code=404, detail="Application not found")
@@ -133,10 +131,11 @@ def get_filtered_applications(
     start_date: Optional[date] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
 ):
     """Filter applications by status and/or date range."""
     query = db.query(models.Application).filter(
-        models.Application.user_id == USER_ID
+        models.Application.user_id == current_user.id
     )
 
     if status:
@@ -155,10 +154,11 @@ def get_filtered_applications(
 def search_applications(
     q: str = Query(..., description="Search by company, role, job description, or id"),
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
 ):
     """Search applications by company name, job title, job description, or id."""
     query = db.query(models.Application).filter(
-        models.Application.user_id == USER_ID
+        models.Application.user_id == current_user.id
     )
 
     # Try to interpret q as a number for ID search

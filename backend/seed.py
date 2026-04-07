@@ -26,6 +26,8 @@ if os.path.exists(DB_PATH):
 from app.database import Base, engine, SessionLocal
 from app.models import User, Resume, Application
 
+from app.auth.utils import hash_password
+
 # Recreate all tables
 Base.metadata.create_all(bind=engine)
 print("Created database tables.")
@@ -34,10 +36,15 @@ db = SessionLocal()
 
 try:
     # ── 1. Create demo user ──────────────────────────────────────────────────
-    user = User()
+    user = User(
+        first_name="John",
+        last_name="Smith",
+        email="john.smith@gmail.com",
+        hashed_password=hash_password("password123#"),
+    )
     db.add(user)
-    db.flush()  # get user.id without committing
-    print(f"Created user with id={user.id}")
+    db.flush()
+    print(f"Created user: {user.first_name} {user.last_name} (id={user.id})")
 
     # ── 2. Create resumes ────────────────────────────────────────────────────
     resumes_data = [

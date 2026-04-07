@@ -4,6 +4,12 @@ import {
     AccordionIcon,
     AccordionItem,
     AccordionPanel,
+    AlertDialog,
+    AlertDialogBody,
+    AlertDialogContent,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogOverlay,
     Badge,
     Box,
     Button,
@@ -25,6 +31,7 @@ import {
     ModalFooter,
     ModalHeader,
     ModalOverlay,
+    Portal,
     Skeleton,
     Spinner,
     Table,
@@ -39,7 +46,7 @@ import {
     VStack,
 } from '@chakra-ui/react';
 import { AddIcon, DeleteIcon, ViewIcon } from '@chakra-ui/icons';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MdFileUpload, MdOutlineFilterList } from 'react-icons/md';
 import type { Resume, ResumeCategory } from '../../types';
 import { NewResumeModal } from '../../../../shared/components/Modals/NewResumeModal';
@@ -85,11 +92,15 @@ function ResumesPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const [selectedResume, setSelectedResume] = useState<Resume | null>(null);
+    const [resumeToDelete, setResumeToDelete] = useState<Resume | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const cancelDeleteRef = useRef<HTMLButtonElement>(null);
 
     const toast = useToast();
 
     const { isOpen: isViewOpen, onOpen: onViewOpen, onClose: onViewClose } = useDisclosure();
     const { isOpen: isAddOpen, onOpen: onAddOpen, onClose: onAddClose } = useDisclosure();
+    const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
 
     const fetchResumes = () => {
         setIsLoading(true);
@@ -179,6 +190,27 @@ function ResumesPage() {
     const handleCloseDetails = () => {
         setSelectedResume(null);
         onViewClose();
+    };
+
+    const handleDeleteClick = (resume: Resume) => {
+        setResumeToDelete(resume);
+        onDeleteOpen();
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!resumeToDelete) return;
+        setIsDeleting(true);
+        try {
+            await apiClient.delete(`/resumes/${resumeToDelete.id}`);
+            toast({ title: 'Resume deleted', status: 'success', duration: 3000, isClosable: true });
+            onDeleteClose();
+            setResumeToDelete(null);
+            fetchResumes();
+        } catch {
+            toast({ title: 'Failed to delete resume', status: 'error', duration: 4000, isClosable: true });
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     return (
@@ -377,11 +409,16 @@ function ResumesPage() {
                                                 <MenuButton as={Button} bg="gray.200" _hover={{ bg: 'gray.300' }} _active={{ bg: 'gray.400' }} w="8px" h="full" minW="unset" p={0} position="absolute" top="0" right="0" borderRadius="0" display="flex" alignItems="center" justifyContent="center" overflow="hidden">
                                                     <Text fontSize="md" fontWeight="bold" letterSpacing="0.1em" whiteSpace="nowrap">⋮</Text>
                                                 </MenuButton>
-                                                <MenuList>
-                                                    <MenuItem onClick={() => handleOpenDetails(resume)} fontSize="14px" icon={<ViewIcon />}>
-                                                        View Details
-                                                    </MenuItem>
-                                                </MenuList>
+                                                <Portal>
+                                                    <MenuList>
+                                                        <MenuItem onClick={() => handleOpenDetails(resume)} fontSize="14px" icon={<ViewIcon />}>
+                                                            View Details
+                                                        </MenuItem>
+                                                        <MenuItem onClick={() => handleDeleteClick(resume)} fontSize="14px" icon={<DeleteIcon />} color="red.500">
+                                                            Delete
+                                                        </MenuItem>
+                                                    </MenuList>
+                                                </Portal>
                                             </Menu>
                                         </Td>
                                     </Tr>
@@ -406,7 +443,33 @@ function ResumesPage() {
 
                 <NewResumeModal isOpen={isAddOpen} onClose={onAddClose} onResumeAdded={fetchResumes} />
 
-                <Modal isOpen={isViewOpen} onClose={handleCloseDetails} size={{ base: 'full', md: 'xl' }}>
+                <AlertDialog
+                    isOpen={isDeleteOpen}
+                    leastDestructiveRef={cancelDeleteRef}
+                    onClose={onDeleteClose}
+                    isCentered
+                >
+                    <AlertDialogOverlay>
+                        <AlertDialogContent>
+                            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+                                Delete Resume
+                            </AlertDialogHeader>
+                            <AlertDialogBody>
+                                Are you sure you want to delete <strong>{resumeToDelete?.title}</strong>? This action cannot be undone.
+                            </AlertDialogBody>
+                            <AlertDialogFooter>
+                                <Button ref={cancelDeleteRef} onClick={onDeleteClose} isDisabled={isDeleting}>
+                                    Cancel
+                                </Button>
+                                <Button colorScheme="red" onClick={handleDeleteConfirm} isLoading={isDeleting} ml={3}>
+                                    Delete
+                                </Button>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialogOverlay>
+                </AlertDialog>
+
+                <Modal isOpen={isViewOpen} onClose={handleCloseDetails} size={{ base: 'full', md: 'xl' }} isCentered scrollBehavior="inside">
                     <ModalOverlay />
                     <ModalContent mx={{ base: 0, md: 4 }}>
                         <ModalHeader>Resume Details</ModalHeader>

@@ -25,6 +25,7 @@ import {
     ModalFooter,
     ModalHeader,
     ModalOverlay,
+    Portal,
     Select,
     Skeleton,
     Spinner,
@@ -522,11 +523,13 @@ function ApplicationsPage() {
                                                 <MenuButton as={Button} bg="gray.200" _hover={{ bg: 'gray.300' }} _active={{ bg: 'gray.400' }} w="8px" h="full" minW="unset" p={0} position="absolute" top="0" right="0" borderRadius="0" display="flex" alignItems="center" justifyContent="center" overflow="hidden">
                                                     <Text fontSize="md" fontWeight="bold" letterSpacing="0.1em" whiteSpace="nowrap">⋮</Text>
                                                 </MenuButton>
-                                                <MenuList>
-                                                    <MenuItem onClick={() => handleOpenDetails(application)} fontSize="14px" icon={<ViewIcon />}>
-                                                        View Details
-                                                    </MenuItem>
-                                                </MenuList>
+                                                <Portal>
+                                                    <MenuList>
+                                                        <MenuItem onClick={() => handleOpenDetails(application)} fontSize="14px" icon={<ViewIcon />}>
+                                                            View Details
+                                                        </MenuItem>
+                                                    </MenuList>
+                                                </Portal>
                                             </Menu>
                                         </Td>
                                     </Tr>

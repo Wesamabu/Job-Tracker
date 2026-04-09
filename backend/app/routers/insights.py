@@ -2,7 +2,7 @@
 Insights endpoints
 
 GET /insights/career → Collects all user data (resumes, applications, outcomes),
-                       computes alignment scores, then sends everything to Gemini
+                       computes alignment scores, then sends everything to an LLM
                        to generate a personalized career coaching summary.
 """
 
@@ -168,8 +168,7 @@ Tone: like a mentor who has seen thousands of resumes and genuinely wants this
 person to get the job. Honest, warm, and specific. Max 500 words.
 """
 
-    # ── 7. Call Gemini and return the summary ─────────────────────────────────
-    # We send the full prompt to Gemini and return whatever it writes back.
+    # ── 7. Call the LLM and return the summary ────────────────────────────────
     summary = generate_summary(prompt)
 
     return {"summary": summary}

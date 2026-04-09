@@ -1,17 +1,20 @@
 from google.cloud import aiplatform
 from vertexai.language_models import TextEmbeddingModel
-from vertexai.generative_models import GenerativeModel
-import vertexai
 import numpy as np
 import os
+from groq import Groq
+from dotenv import load_dotenv
 
-# 1. Initialize Vertex AI with your specific Project ID and Region
-# Setting the location to 'us-central1' ensures the API finds the model.
+load_dotenv()
+
+# Initialize Vertex AI for embeddings
 PROJECT_ID = "job-tracker-gcp"
 LOCATION = "us-central1"
 
 aiplatform.init(project=PROJECT_ID, location=LOCATION)
-vertexai.init(project=PROJECT_ID, location=LOCATION)
+
+# Initialize Groq client for AI summaries
+groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 def get_embedding(text: str) -> list[float]:
     """
@@ -61,13 +64,17 @@ def compute_similarity(vec1: list[float], vec2: list[float]) -> float:
 
 def generate_summary(prompt: str) -> str:
     """
-    Sends a prompt to Gemini and returns the AI-written response as a string.
+    Sends a prompt to Groq (Llama 3.3 70B) and returns the AI-written response.
     Used by the insights endpoint to generate the career coaching summary.
     """
     try:
-        model = GenerativeModel("gemini-1.0-pro")
-        response = model.generate_content(prompt)
-        return response.text
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return response.choices[0].message.content
     except Exception as e:
-        print(f"Gemini Error: {e}")
+        import traceback
+        print(f"Groq Error: {e}")
+        traceback.print_exc()
         return "We were unable to generate your career summary at this time. Please try again later."

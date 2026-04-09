@@ -1,5 +1,7 @@
 from google.cloud import aiplatform
 from vertexai.language_models import TextEmbeddingModel
+from vertexai.generative_models import GenerativeModel
+import vertexai
 import numpy as np
 import os
 
@@ -9,6 +11,7 @@ PROJECT_ID = "job-tracker-gcp"
 LOCATION = "us-central1"
 
 aiplatform.init(project=PROJECT_ID, location=LOCATION)
+vertexai.init(project=PROJECT_ID, location=LOCATION)
 
 def get_embedding(text: str) -> list[float]:
     """
@@ -54,3 +57,17 @@ def compute_similarity(vec1: list[float], vec2: list[float]) -> float:
         return 0.0
         
     return float(dot_product / (norm_v1 * norm_v2))
+
+
+def generate_summary(prompt: str) -> str:
+    """
+    Sends a prompt to Gemini and returns the AI-written response as a string.
+    Used by the insights endpoint to generate the career coaching summary.
+    """
+    try:
+        model = GenerativeModel("gemini-1.0-pro")
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        print(f"Gemini Error: {e}")
+        return "We were unable to generate your career summary at this time. Please try again later."

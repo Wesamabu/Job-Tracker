@@ -3,10 +3,10 @@ from bs4 import BeautifulSoup
 import httpx
 import logging
 
-#Setup logging to see errors in your terminal
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
+
 
 @router.post("/parse-url")
 async def parse_job_url(payload: dict):
@@ -14,7 +14,6 @@ async def parse_job_url(payload: dict):
     if not url:
         raise HTTPException(status_code=400, detail="URL is required")
 
-    
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
@@ -22,45 +21,64 @@ async def parse_job_url(payload: dict):
     async with httpx.AsyncClient(timeout=10.0, headers=headers, follow_redirects=True) as client:
         try:
             response = await client.get(url)
-            
-            #fallback trigger 
+
             if response.status_code != 200:
                 raise HTTPException(status_code=422, detail=f"Site returned error code: {response.status_code}")
 
             soup = BeautifulSoup(response.text, "html.parser")
 
-            #Extracting Company Name
+            # ── Company Name ──────────────────────────────────────────────────
+            # Try og:site_name meta tag first (works on most sites)
+            # Fall back to extracting from the domain name
             company = "Unknown Company"
             og_site = soup.find("meta", property="og:site_name")
-            if og_site:
+            if og_site and og_site.get("content"):
                 company = og_site["content"]
-            elif "linkedin.com" in url:
-                company = "LinkedIn"
-            elif "indeed.com" in url:
-                company = "Indeed"
             else:
-                #Fallback: Use the domain name
                 company = url.split("//")[-1].split(".")[0].capitalize()
 
-            #Extract Job Role
+            # ── Job Role ──────────────────────────────────────────────────────
+            # Try h1 first, then fall back to page title
             role = "Unknown Role"
-           
             h1_tag = soup.find("h1")
             if h1_tag:
                 role = h1_tag.get_text().strip()
-            elif soup.title:
-        
+            elif soup.title and soup.title.string:
                 role = soup.title.string.split("|")[0].split("-")[0].strip()
+
+            # ── Job Description ───────────────────────────────────────────────
+            # Try common HTML patterns used by job sites that allow scraping.
+            # LinkedIn and Indeed block scraping so this will be empty for them.
+            # The user will need to paste the description manually in that case.
+            description = ""
+
+            selectors = [
+                # Generic patterns that work on many company career pages
+                {"tag": "div", "attr": {"class": lambda c: c and "job-description" in " ".join(c).lower()}},
+                {"tag": "div", "attr": {"class": lambda c: c and "description" in " ".join(c).lower()}},
+                {"tag": "section", "attr": {"class": lambda c: c and "description" in " ".join(c).lower()}},
+                {"tag": "div", "attr": {"id": lambda i: i and "description" in i.lower()}},
+                # Indeed
+                {"tag": "div", "attr": {"id": "jobDescriptionText"}},
+            ]
+
+            for selector in selectors:
+                content = soup.find(selector["tag"], selector["attr"])
+                if content:
+                    description = content.get_text(separator="\n").strip()
+                    break
 
             return {
                 "company_name": company,
                 "role": role,
-                "job_description": "Automatic extraction successful. Please verify and edit details below."
+                "job_description": description,
             }
 
         except httpx.RequestError as exc:
             logger.error(f"Network error: {exc}")
             raise HTTPException(status_code=422, detail="Network error: Could not reach the website.")
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"Parsing error: {e}")
-            raise HTTPException(status_code=422, detail="Safe fallback: Could not extract data from this specific URL.")
+            raise HTTPException(status_code=422, detail="Could not extract data from this URL.")

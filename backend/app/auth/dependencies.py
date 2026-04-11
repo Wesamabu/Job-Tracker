@@ -6,7 +6,7 @@ from app.database import SessionLocal
 from app.models import User
 from app.auth.utils import decode_access_token
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 
 
 def get_db():

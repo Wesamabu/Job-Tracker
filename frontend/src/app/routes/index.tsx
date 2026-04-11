@@ -20,7 +20,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function AppLayout({ children }: { children: React.ReactNode }) {
     return (
         <>
-            <Navbar />
+            <Box position="sticky" top={0} zIndex="sticky">
+                <Navbar />
+            </Box>
             <Box as="main" flex="1">
                 {children}
             </Box>

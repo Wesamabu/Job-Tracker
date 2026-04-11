@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Initialize Vertex AI for embeddings
-PROJECT_ID = "job-tracker-gcp"
+PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", "job-tracker-gcp")
 LOCATION = "us-central1"
 
 aiplatform.init(project=PROJECT_ID, location=LOCATION)

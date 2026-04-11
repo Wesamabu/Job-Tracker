@@ -25,12 +25,22 @@ import {
 } from '@chakra-ui/react';
 import { HamburgerIcon } from '@chakra-ui/icons';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
-import authService from '@/features/auth/services/auth.service';
+import { useState, useEffect } from 'react';
+import authService, { type CurrentUser } from '@/features/auth/services/auth.service';
 
 function Navbar() {
     const location = useLocation();
     const navigate = useNavigate();
     const { isOpen, onOpen, onClose } = useDisclosure();
+    const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+
+    useEffect(() => {
+        authService.getMe().then(setCurrentUser).catch(() => {});
+    }, []);
+
+    const fullName = currentUser
+        ? `${currentUser.first_name} ${currentUser.last_name}`.trim()
+        : '';
 
     const handleLogout = async () => {
         await authService.logout();
@@ -95,7 +105,7 @@ function Navbar() {
                             <NavButton key={item.path} path={item.path} label={item.label} />
                         ))}
                         <Menu>
-                            <Tooltip label="Patrick Mukendi" placement="bottom">
+                            <Tooltip label={fullName} placement="bottom">
                                 <MenuButton
                                     cursor="pointer"
                                     border="none"
@@ -106,7 +116,7 @@ function Navbar() {
                                     justifyContent="center"
                                 >
                                     <Avatar
-                                        name="Patrick Mukendi"
+                                        name={fullName}
                                         size="sm"
                                         bg="brand.400"
                                         _hover={{ bg: 'brand.500' }}
@@ -124,7 +134,7 @@ function Navbar() {
                     {/* Mobile Menu Button */}
                     <Flex gap={2} align="center" display={{ base: 'flex', md: 'none' }}>
                         <Menu>
-                            <Tooltip label="Patrick Mukendi" placement="bottom">
+                            <Tooltip label={fullName} placement="bottom">
                                 <MenuButton
                                     cursor="pointer"
                                     border="none"
@@ -135,7 +145,7 @@ function Navbar() {
                                     justifyContent="center"
                                 >
                                     <Avatar
-                                        name="Patrick Mukendi"
+                                        name={fullName}
                                         size="sm"
                                         bg="brand.400"
                                         _hover={{ bg: 'brand.500' }}

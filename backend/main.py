@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import FRONTEND_ORIGIN
 from app.database import Base, engine
-from app.routers import health, applications, dashboard, resumes, jobs, auth, insights
+from app.routers import health, applications, dashboard, resumes, jobs, auth, insights, insights_service
 
 # Create all tables
 import app.models  # noqa: F401
@@ -34,3 +34,4 @@ app.include_router(resumes.router, prefix="/api")
 app.include_router(jobs.router, prefix="/api") # Added prefix here
 app.include_router(auth.router, prefix="/api")
 app.include_router(insights.router, prefix="/api")
+app.include_router(insights_service.router, prefix="/api")

@@ -10,6 +10,7 @@ distro==1.9.0
 docstring_parser==0.17.0
 email-validator==2.2.0
 fastapi==0.115.0
+groq>=0.9.0
 google-api-core==2.30.1
 google-auth==2.49.1
 google-cloud-aiplatform==1.144.0

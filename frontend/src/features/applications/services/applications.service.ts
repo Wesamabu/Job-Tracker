@@ -1,7 +1,17 @@
 import apiClient from '@/shared/lib/apiClient';
 import { Application, ApplicationFormData } from '../types';
 
+export interface ParsedJobData {
+    company_name: string;
+    role: string;
+    job_description: string;
+}
+
 export const applicationsService = {
+    parseJobUrl: async (url: string): Promise<ParsedJobData> => {
+        return apiClient.post<ParsedJobData>('/jobs/parse-url', { url });
+    },
+
     getAll: async (): Promise<Application[]> => {
         return apiClient.get<Application[]>('/applications/');
     },

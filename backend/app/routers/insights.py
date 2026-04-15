@@ -6,11 +6,13 @@ GET /insights/career → Collects all user data (resumes, applications, outcomes
                        to generate a personalized career coaching summary.
 """
 
+import hashlib
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app.auth.dependencies import get_current_user, get_db
-from app.models import Application, Resume, User
+from app.models import Application, Resume, User, InsightsCache
 from app.utils.text_extraction import extract_text_from_file
 from app.utils.embeddings import get_embedding, compute_similarity, generate_summary
 
@@ -168,7 +170,46 @@ Tone: like a mentor who has seen thousands of resumes and genuinely wants this
 person to get the job. Honest, warm, and specific. Max 500 words.
 """
 
-    # ── 7. Call the LLM and return the summary ────────────────────────────────
+    # ── 7. Compute fingerprint ────────────────────────────────────────────────
+    # The fingerprint is a hash that represents the user's current data state.
+    # It includes: sorted resume IDs + each application's ID and status.
+    # If any of these change (new resume, status update, new application),
+    # the fingerprint changes and we regenerate the summary.
+    # If nothing changed since last time, we return the cached summary.
+    resume_ids = sorted(str(r.id) for r in resumes)
+    app_fingerprint_parts = sorted(f"{app.id}:{app.status}" for app in applications)
+    raw_fingerprint = "|".join(resume_ids) + "||" + ",".join(app_fingerprint_parts)
+    fingerprint = hashlib.md5(raw_fingerprint.encode()).hexdigest()
+
+    # ── 8. Check cache ────────────────────────────────────────────────────────
+    # Look up whether we already have a cached summary for this user.
+    # If the stored fingerprint matches the current one, return the cached summary.
+    cache = db.query(InsightsCache).filter(InsightsCache.user_id == current_user.id).first()
+    if cache and cache.fingerprint == fingerprint:
+        return {"summary": cache.summary}
+
+    # ── 9. Call the LLM ───────────────────────────────────────────────────────
+    # Only reaches here if the data changed or there is no cached summary yet.
     summary = generate_summary(prompt)
+
+    # ── 10. Save to cache ─────────────────────────────────────────────────────
+    # Store the new summary and fingerprint so the next request can use the cache.
+    # Uses try/except to handle the race condition where the frontend fires all
+    # three insight requests simultaneously and all try to INSERT the same row.
+    if cache:
+        cache.summary = summary
+        cache.fingerprint = fingerprint
+        db.commit()
+    else:
+        try:
+            db.add(InsightsCache(user_id=current_user.id, summary=summary, fingerprint=fingerprint))
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            cache = db.query(InsightsCache).filter(InsightsCache.user_id == current_user.id).first()
+            if cache:
+                cache.summary = summary
+                cache.fingerprint = fingerprint
+                db.commit()
 
     return {"summary": summary}

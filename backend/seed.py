@@ -17,6 +17,9 @@ from datetime import date, datetime
 # Make sure app/ is importable
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Generate demo resume PDFs before seeding
+import generate_demo_resumes  # noqa: F401
+
 # Delete old database so we start clean
 DB_PATH = os.path.join(os.path.dirname(__file__), "app.db")
 if os.path.exists(DB_PATH):
@@ -48,9 +51,9 @@ try:
 
     # ── 2. Create resumes ────────────────────────────────────────────────────
     resumes_data = [
-        {"name": "Software Engineer Resume", "category": "tech", "file_path": "uploads/demo_swe_resume.pdf"},
-        {"name": "Full Stack Developer Resume", "category": "tech", "file_path": "uploads/demo_fullstack_resume.pdf"},
-        {"name": "General Resume", "category": "general", "file_path": "uploads/demo_general_resume.pdf"},
+        {"name": "Software Engineer Resume", "category": "tech", "file_path": "app/uploads/demo_swe_resume.pdf"},
+        {"name": "Full Stack Developer Resume", "category": "tech", "file_path": "app/uploads/demo_fullstack_resume.pdf"},
+        {"name": "General Resume", "category": "general", "file_path": "app/uploads/demo_general_resume.pdf"},
     ]
 
     resumes = []
@@ -70,7 +73,7 @@ try:
             "location": "Mountain View, CA",
             "status": "interviewing",
             "date_applied": date(2026, 2, 20),
-            "job_description": "Build user-facing features for Google Search.",
+            "job_description": "Build and maintain high-performance user-facing features for Google Search using React, TypeScript, and JavaScript. Design reusable UI components, optimize web performance, and collaborate with backend engineers on REST API integrations. Experience with CSS, HTML5, and responsive design required. Familiarity with CI/CD pipelines and Git workflows expected.",
             "notes": "Completed recruiter screen. Technical round scheduled.",
             "resume": resumes[0],
         },
@@ -80,7 +83,7 @@ try:
             "location": "Remote",
             "status": "applied",
             "date_applied": date(2026, 3, 10),
-            "job_description": "Work on Stripe's payment infrastructure.",
+            "job_description": "Work on Stripe's payment infrastructure using Node.js, React, and PostgreSQL. Build full-stack features for merchant dashboards, implement REST APIs, and integrate third-party payment services. Strong knowledge of JavaScript, TypeScript, Docker, and AWS required. Experience with Agile/Scrum and CI/CD pipelines a plus.",
             "notes": "Submitted through careers page.",
             "resume": resumes[1],
         },
@@ -90,7 +93,7 @@ try:
             "location": "Seattle, WA",
             "status": "rejected",
             "date_applied": date(2026, 1, 15),
-            "job_description": "Build scalable backend services for AWS.",
+            "job_description": "Design and build scalable backend microservices for AWS using Java, Python, and Spring Boot. Work with distributed systems, optimize SQL and NoSQL databases, and deploy services using Docker and Kubernetes on AWS EC2 and Lambda. Strong understanding of algorithms, data structures, and system design required.",
             "notes": "Rejected after online assessment.",
             "resume": resumes[2],
         },
@@ -100,7 +103,7 @@ try:
             "location": "Menlo Park, CA",
             "status": "offered",
             "date_applied": date(2026, 1, 28),
-            "job_description": "Build React components for Facebook and Instagram.",
+            "job_description": "Build high-quality React components for Facebook and Instagram used by billions of users. Work with JavaScript, TypeScript, GraphQL, and REST APIs. Optimize rendering performance, write unit and integration tests with Jest, and collaborate closely with product designers. Experience with React Native is a bonus.",
             "notes": "Received offer — negotiating salary.",
             "resume": resumes[0],
         },
@@ -110,7 +113,7 @@ try:
             "location": "Redmond, WA",
             "status": "applied",
             "date_applied": date(2026, 3, 1),
-            "job_description": "Build services for Microsoft Azure.",
+            "job_description": "Develop cloud-native backend services for Microsoft Azure using Python, Java, and C#. Design RESTful APIs, work with distributed databases like PostgreSQL and MongoDB, and deploy using Docker and Kubernetes. Proficiency in CI/CD, Git, and Agile development expected. Azure certification is a plus.",
             "notes": "Applied via LinkedIn.",
             "resume": resumes[1],
         },
@@ -120,7 +123,7 @@ try:
             "location": "San Francisco, CA",
             "status": "screening",
             "date_applied": date(2026, 2, 5),
-            "job_description": "Build features for Airbnb's host platform.",
+            "job_description": "Build full-stack features for Airbnb's host and guest platform using React, Ruby on Rails, and Python. Work on REST APIs, optimize PostgreSQL queries, and deploy on AWS. Experience with JavaScript, TypeScript, Docker, and agile workflows required. Strong problem-solving skills and ability to work in a fast-paced environment.",
             "notes": "Phone screen scheduled for next week.",
             "resume": resumes[0],
         },
@@ -130,7 +133,7 @@ try:
             "location": "Remote",
             "status": "applied",
             "date_applied": date(2026, 3, 15),
-            "job_description": "Build backend services for Spotify's data platform.",
+            "job_description": "Build and maintain backend services for Spotify's data platform using Python, FastAPI, and Apache Kafka. Work with large-scale data pipelines, PostgreSQL, and cloud infrastructure on Google Cloud Platform. Experience with Docker, Kubernetes, and machine learning pipelines is a plus. Strong Python and SQL skills required.",
             "notes": "Referred by a friend at Spotify.",
             "resume": resumes[2],
         },
@@ -140,7 +143,7 @@ try:
             "location": "Los Gatos, CA",
             "status": "rejected",
             "date_applied": date(2025, 12, 10),
-            "job_description": "Build streaming infrastructure for Netflix.",
+            "job_description": "Design and build streaming infrastructure for Netflix using Java, Python, and Apache Kafka. Work on distributed systems at massive scale, optimize microservices deployed on AWS, and collaborate with data engineering teams. Experience with Docker, Kubernetes, PostgreSQL, and system design at scale required.",
             "notes": "Rejected after first interview round.",
             "resume": resumes[1],
         },
@@ -150,7 +153,7 @@ try:
             "location": "San Francisco, CA",
             "status": "applied",
             "date_applied": date(2026, 3, 18),
-            "job_description": "Build CRM features on Salesforce platform.",
+            "job_description": "Build CRM features for the Salesforce platform using JavaScript, React, Node.js, and Java. Design REST and GraphQL APIs, work with PostgreSQL databases, and deploy on AWS using CI/CD pipelines. Experience with Agile development, Git, Docker, and Salesforce APIs preferred.",
             "notes": "Applied through company website.",
             "resume": resumes[0],
         },
@@ -160,7 +163,7 @@ try:
             "location": "Sunnyvale, CA",
             "status": "accepted",
             "date_applied": date(2026, 1, 5),
-            "job_description": "Build LinkedIn's professional network platform.",
+            "job_description": "Build and scale LinkedIn's professional network platform using Java, Python, and React. Design distributed systems, work with REST APIs and GraphQL, and optimize PostgreSQL and Redis databases. Experience with Docker, Kubernetes, AWS, and CI/CD pipelines expected. Strong knowledge of algorithms and system design required.",
             "notes": "Accepted offer! Start date TBD.",
             "resume": resumes[0],
         },

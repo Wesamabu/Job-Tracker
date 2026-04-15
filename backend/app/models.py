@@ -2,7 +2,7 @@
 SQLAlchemy models for Job Tracker.
 """
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, func, Date
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, func, Date, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -58,3 +58,21 @@ class Application(Base):
     # Relationships
     user = relationship("User", back_populates="applications")
     resume = relationship("Resume", back_populates="applications")
+
+
+class InsightsCache(Base):
+    """
+    Stores the last generated career summary for a user alongside a fingerprint
+    of the data that produced it. If the fingerprint hasn't changed since the
+    last generation, we return the cached summary instead of calling Groq again.
+    """
+    __tablename__ = "insights_cache"
+    __table_args__ = (UniqueConstraint("user_id"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    fingerprint = Column(String, nullable=False)
+    summary = Column(Text, nullable=True)
+    role_fit = Column(Text, nullable=True)       # JSON string
+    skill_themes = Column(Text, nullable=True)   # JSON string
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

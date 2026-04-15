@@ -68,6 +68,20 @@ async def parse_job_url(payload: dict):
                     description = content.get_text(separator="\n").strip()
                     break
 
+            # Fallback: use the meta description tag if nothing else was found.
+            # Most job sites include a summary of the role here even when the
+            # full description is JavaScript-rendered.
+            if not description:
+                meta_desc = soup.find("meta", attrs={"name": "description"})
+                if meta_desc and meta_desc.get("content"):
+                    description = meta_desc["content"].strip()
+
+            # Fallback: try og:description
+            if not description:
+                og_desc = soup.find("meta", property="og:description")
+                if og_desc and og_desc.get("content"):
+                    description = og_desc["content"].strip()
+
             return {
                 "company_name": company,
                 "role": role,

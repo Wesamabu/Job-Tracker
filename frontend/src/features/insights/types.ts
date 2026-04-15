@@ -13,13 +13,11 @@ export interface CareerInsightsData {
 
 export interface SkillItem {
     skill: string;
-    demandLevel: 'High' | 'Medium' | 'Low';
-    yourAlignment: 'Strong' | 'Moderate' | 'Weak';
+    matchPercentage: number;
 }
 
 export interface SkillThemesData {
     skills: SkillItem[];
-    improvementTips: string[];
 }
 
 export interface RoleItem {

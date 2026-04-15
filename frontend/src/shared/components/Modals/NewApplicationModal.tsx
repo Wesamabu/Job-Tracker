@@ -13,11 +13,18 @@ import {
     Button,
     VStack,
     useToast,
+    HStack,
+    Divider,
+    Text,
+    InputGroup,
+    InputRightElement,
+    Box,
+    Icon,
 } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
+import { MdLink, MdSave } from 'react-icons/md';
 import { CustomDropdown } from '../CustomDropdown';
 import { useRef, useState, useEffect } from 'react';
-import { MdSave } from 'react-icons/md';
 import applicationsService from '@/features/applications/services/applications.service';
 import apiClient from '@/shared/lib/apiClient';
 
@@ -39,6 +46,13 @@ export const NewApplicationModal = ({
     const [isSaving, setIsSaving] = useState(false);
     const [resumeOptions, setResumeOptions] = useState<{ id: string | number; label: string; value: string | number }[]>([]);
 
+    const [jobUrl, setJobUrl] = useState('');
+    const [isParsing, setIsParsing] = useState(false);
+    const [parseError, setParseError] = useState('');
+    const [jobTitle, setJobTitle] = useState('');
+    const [company, setCompany] = useState('');
+    const [description, setDescription] = useState('');
+
     useEffect(() => {
         if (isOpen) {
             apiClient.get<{ items: { id: number; title?: string; name?: string }[] }>('/resumes')
@@ -49,28 +63,52 @@ export const NewApplicationModal = ({
         }
     }, [isOpen]);
 
-    const jobTitleRef = useRef<HTMLInputElement>(null);
-    const companyRef = useRef<HTMLInputElement>(null);
     const locationRef = useRef<HTMLInputElement>(null);
     const dateRef = useRef<HTMLInputElement>(null);
     const notesRef = useRef<HTMLTextAreaElement>(null);
-    const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
     const toast = useToast();
+
+    const handleParseUrl = async () => {
+        const trimmed = jobUrl.trim();
+        if (!trimmed) return;
+        setIsParsing(true);
+        setParseError('');
+        try {
+            const data = await applicationsService.parseJobUrl(trimmed);
+            if (data.role) setJobTitle(data.role);
+            if (data.company_name) setCompany(data.company_name);
+            if (data.job_description) setDescription(data.job_description);
+            toast({
+                title: 'Job details parsed',
+                description: 'Fields have been auto-filled. Review and adjust as needed.',
+                status: 'success',
+                duration: 3000,
+                isClosable: true,
+            });
+        } catch {
+            setParseError('Could not extract details from this URL. Try a direct company career page, or fill in the fields below manually.');
+        } finally {
+            setIsParsing(false);
+        }
+    };
 
     const handleClose = () => {
         setSelectedStatus('applied');
         setSelectedResumeId('');
         setResumeOptions([]);
+        setJobUrl('');
+        setJobTitle('');
+        setCompany('');
+        setDescription('');
+        setParseError('');
         onClose();
     };
 
     const handleSave = async () => {
-        const jobTitle = jobTitleRef.current?.value?.trim();
-        const company = companyRef.current?.value?.trim();
         const appliedDate = dateRef.current?.value;
 
-        if (!jobTitle || !company || !appliedDate) {
+        if (!jobTitle.trim() || !company.trim() || !appliedDate) {
             toast({
                 title: 'Missing required fields',
                 description: 'Please fill in Job Title, Company, and Date Applied.',
@@ -84,12 +122,12 @@ export const NewApplicationModal = ({
         setIsSaving(true);
         try {
             await applicationsService.create({
-                jobTitle,
-                company,
+                jobTitle: jobTitle.trim(),
+                company: company.trim(),
                 location: locationRef.current?.value?.trim() || undefined,
                 status: String(selectedStatus) || 'applied',
                 appliedDate,
-                description: descriptionRef.current?.value?.trim() || undefined,
+                description: description.trim() || undefined,
                 notes: notesRef.current?.value?.trim() || undefined,
                 resumeId: selectedResumeId ? Number(selectedResumeId) : undefined,
             } as any);
@@ -124,15 +162,85 @@ export const NewApplicationModal = ({
                 <ModalHeader>Add New Application</ModalHeader>
                 <ModalCloseButton />
                 <ModalBody pb={6}>
-                    <VStack spacing={4}>
+                    <VStack spacing={4} w="full">
+
+                        {/* Parsing Job URL */}
+                        <Box
+                            w="full"
+                            p={4}
+                            bg="brand.50"
+                            borderRadius="xl"
+                            borderWidth="1px"
+                            borderColor="brand.200"
+                        >
+                            <Text fontWeight="700" fontSize="sm" color="brand.700" mb={3}>
+                                Auto-fill from Job Posting URL
+                            </Text>
+                            <Text fontSize="xs" color="brand.600" mb={3}>
+                                Paste a link to the job posting and we'll fill in the title, company, and description for you.
+                            </Text>
+                            <InputGroup size="md">
+                                <Input
+                                    value={jobUrl}
+                                    onChange={(e) => { setJobUrl(e.target.value); setParseError(''); }}
+                                    placeholder="https://careers.company.com/job/..."
+                                    bg="white"
+                                    borderColor="brand.200"
+                                    _hover={{ borderColor: 'brand.400' }}
+                                    _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)' }}
+                                    pr="6rem"
+                                    onKeyDown={(e) => { if (e.key === 'Enter') handleParseUrl(); }}
+                                />
+                                <InputRightElement width="6rem">
+                                    <Button
+                                        h="1.75rem"
+                                        size="sm"
+                                        colorScheme="brand"
+                                        leftIcon={<Icon as={MdLink} />}
+                                        onClick={handleParseUrl}
+                                        isLoading={isParsing}
+                                        loadingText="Filling…"
+                                        isDisabled={!jobUrl.trim()}
+                                        fontSize="xs"
+                                        px={3}
+                                    >
+                                        Fill
+                                    </Button>
+                                </InputRightElement>
+                            </InputGroup>
+                            {parseError ? (
+                                <Text fontSize="xs" color="red.500" mt={2}>
+                                    {parseError}
+                                </Text>
+                            ) : (
+                                <Text fontSize="xs" color="gray.500" mt={2}>
+                                    Works on most company career pages. LinkedIn and Indeed block scraping.
+                                </Text>
+                            )}
+                        </Box>
+
+                        <HStack w="full" align="center">
+                            <Divider />
+                            <Text fontSize="xs" color="gray.400" whiteSpace="nowrap" px={2}>details</Text>
+                            <Divider />
+                        </HStack>
+
                         <FormControl isRequired>
                             <FormLabel>Job Title</FormLabel>
-                            <Input ref={jobTitleRef} placeholder="e.g. Senior Software Engineer" />
+                            <Input
+                                value={jobTitle}
+                                onChange={(e) => setJobTitle(e.target.value)}
+                                placeholder="e.g. Senior Software Engineer"
+                            />
                         </FormControl>
 
                         <FormControl isRequired>
                             <FormLabel>Company</FormLabel>
-                            <Input ref={companyRef} placeholder="e.g. Google" />
+                            <Input
+                                value={company}
+                                onChange={(e) => setCompany(e.target.value)}
+                                placeholder="e.g. Google"
+                            />
                         </FormControl>
 
                         <FormControl>
@@ -183,7 +291,12 @@ export const NewApplicationModal = ({
 
                         <FormControl>
                             <FormLabel>Job Description</FormLabel>
-                            <Textarea ref={descriptionRef} placeholder="Paste the job description here..." rows={4} />
+                            <Textarea
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                placeholder="Paste the job description here..."
+                                rows={4}
+                            />
                         </FormControl>
 
                         <FormControl>
@@ -200,6 +313,7 @@ export const NewApplicationModal = ({
                         mr={3}
                         onClick={handleSave}
                         isLoading={isSaving}
+                        isDisabled={isSaving}
                     >
                         Save
                     </Button>

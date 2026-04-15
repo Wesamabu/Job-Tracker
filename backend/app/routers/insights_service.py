@@ -1,12 +1,6 @@
-from collections import Counter
-import json
-from fastapi import APIRouter, Depends
 from collections import defaultdict
-
-from app.utils.embeddings import get_embedding, compute_similarity, generate_summary
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.database import get_db
 
 from app.auth.dependencies import get_current_user, get_db
 from app.models import Application, Resume, User
@@ -14,16 +8,7 @@ from app.utils.text_extraction_roleFit import extract_skills
 from app.utils.text_extraction_skillThemes import extract_skill_text_from_file
 
 
-
 router = APIRouter(prefix="/insights_service", tags=["insights_service"])
-
-class InsightsService:
-    """
-    AI-powered analytics engine for:
-    - Role Fit scoring
-    - Skill extraction
-    - Skill gap analysis
-    """
 
 # -------------------------------------------------
 # ROLE FIT (Role + % ONLY)

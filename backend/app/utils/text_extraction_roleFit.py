@@ -1,19 +1,13 @@
 import os
 import json
 import re
-from collections import defaultdict
 from typing import List
 
 import fitz  # PyMuPDF
 from groq import Groq
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from dotenv import load_dotenv
 
-# your existing imports
-from app.database import get_db
-from app.models import Resume, Application, User
-
-router = APIRouter()
+load_dotenv()
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
@@ -78,5 +72,3 @@ Text:
                 return []
 
     return []
-
-

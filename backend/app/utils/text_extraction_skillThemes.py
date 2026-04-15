@@ -1,9 +1,11 @@
 import os
 import re
-import json
 import fitz  # PyMuPDF
 from docx import Document
 from groq import Groq
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Initialize the Groq client
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
@@ -77,40 +79,3 @@ def extract_skill_text_from_file(file_path: str) -> str:
     except Exception as e:
         print(f"Error reading {file_path}: {e}")
         return ""
-
-def extract_skills(text: str):
-    prompt = f"""
-    Extract ONLY meaningful technical and professional skills.
-
-    Rules:
-    - Return ONLY a valid JSON array
-    - No explanation
-    - No extra text
-    - No duplicates
-    - Lowercase only
-
-    Text:
-    {text}
-    """
-
-    response = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0
-    )
-
-    content = response.choices[0].message.content.strip()
-
-    try:
-        # 🔥 safest direct parse first
-        return json.loads(content)
-    except json.JSONDecodeError:
-        # fallback: extract only first JSON block
-        match = re.search(r"\[.*?\]", content, re.S)
-        if match:
-            try:
-                return json.loads(match.group())
-            except:
-                return []
-
-    return []
